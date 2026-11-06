@@ -54,7 +54,7 @@ auf 500 kbit/s eingestellt; der read-only START ist freigegeben.
 
 ## Verdacht: alte Bitratenwechsel als Stoerursache
 
-Der frühere Firmware-Stand wechselte die
+Der alte Stand (Backup `ESP_Firmware_CEM_20261105-190050`) wechselte die
 Bitrate ueber `switchSource()`:
 
 - `can_manager.cpp`: `switchSource()` rief bei jedem Wechsel zuerst

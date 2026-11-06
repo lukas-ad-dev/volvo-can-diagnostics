@@ -5,6 +5,7 @@ const state = {
   signals: [],
   references: null,
   assistant: null,
+  bitwatch: null,
   scenarios: {},
   events: [],
   lastEventId: 0,
@@ -18,10 +19,12 @@ const state = {
   monitorBusy: false,
   monitorMissed: 0,
   monitorStatus: null,
+  monitorStable: new Map(),
   assistantChoices: {},
 };
 
 let assistantSelectActive = false;
+let bitwatchInputActive = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -102,6 +105,7 @@ function tabTo(name) {
   if (panel) panel.classList.add("active");
   if (name === "monitor") pollMonitor(true);
   if (name === "assistant") pollAssistant();
+  if (name === "bits") pollBitwatch();
   if (name === "references") loadReferences();
   if (name === "export") { pollStatus(); refreshExportFiles(); pollRawFrames(); }
   if (name === "live") {
@@ -413,28 +417,21 @@ function renderAssistant(data) {
     idle: "Bereit",
     baseline: "Grundzustand: Aktion AUS lassen",
     waiting_action: "Jetzt Aktion EINschalten und markieren",
-    action1: "Aktion EIN lassen",
-    waiting_off: "Jetzt Aktion AUSschalten und markieren",
-    recovery: "Aktion AUS lassen",
-    waiting_action2: "Jetzt Aktion erneut EINschalten und markieren",
-    action2: "Aktion EIN lassen (2. Zyklus)",
+    action: "Aktion wird aufgenommen",
     ready: "Auswertung bereit",
     evaluated: "Ausgewertet",
   };
   const phase = phaseNames[data.phase] || data.phase;
-  const timedPhases = new Set(["baseline", "action1", "recovery", "action2"]);
-  const remaining = timedPhases.has(data.phase) ? ` · ${data.remaining_seconds.toFixed(1)} s` : "";
+  const remaining = (data.phase === "baseline" || data.phase === "action")
+    ? ` | ${data.remaining_seconds.toFixed(1)} s`
+    : "";
   $("assistant-status").innerHTML = "";
   const strong = document.createElement("strong"); strong.textContent = phase + remaining;
   const info = document.createElement("span");
-  info.textContent = ` · A: ${data.baseline_frames} F / ${data.baseline_ids} IDs · B1: ${data.action1_frames} F / ${data.action1_ids} IDs · AUS: ${data.recovery_frames} F / ${data.recovery_ids} IDs · B2: ${data.action2_frames} F / ${data.action2_ids} IDs · Aktion: ${data.action_label || "-"} · Lauf: ${data.run_id || "-"}`;
+  info.textContent = ` | A: ${data.baseline_frames} F / ${data.baseline_ids} IDs | B: ${data.action_frames} F / ${data.action_ids} IDs | Aktion: ${data.action_label || "-"} | Lauf: ${data.run_id || "-"}`;
   $("assistant-status").append(strong, info);
   $("assistant-start").disabled = !(data.phase === "idle" || data.phase === "evaluated");
-  const markLabels = {
-    waiting_action: "Aktion EIN markieren",
-    waiting_off: "Aktion AUS markieren",
-    waiting_action2: "Aktion EIN (2) markieren",
-  };
+  const markLabels = { waiting_action: "Aktion markieren" };
   $("assistant-mark").disabled = !Object.prototype.hasOwnProperty.call(markLabels, data.phase);
   $("assistant-mark").textContent = markLabels[data.phase] || "Aktion markieren";
   $("assistant-evaluate").disabled = data.phase !== "ready";
@@ -528,6 +525,122 @@ async function assistantAction(path, payload = {}) {
     renderAssistant(state.assistant);
     await pollSignals();
   } catch (error) { toast(error.message, true); }
+}
+
+/* ---------- Live-Bit-Test ---------- */
+
+async function pollBitwatch() {
+  if (bitwatchInputActive) return;
+  try {
+    const data = await api("/api/bitwatch");
+    state.bitwatch = data;
+    renderBitwatch(data);
+  } catch (_) { /* Status zeigt Fehler */ }
+}
+
+async function startBitwatch() {
+  try {
+    const data = await api("/api/bitwatch/start", { method: "POST", body: JSON.stringify({ duration: 30 }) });
+    state.bitwatch = data;
+    tabTo("bits");
+    toast("Testbetrieb-Aufnahme gestartet (30 s). Jetzt Funktionen schalten.");
+    renderBitwatch(data);
+  } catch (error) { toast(error.message, true); }
+}
+
+async function stopBitwatch() {
+  try {
+    const data = await api("/api/bitwatch/stop", { method: "POST", body: "{}" });
+    state.bitwatch = data;
+    toast("Bit-Aufnahme gestoppt.");
+    renderBitwatch(data);
+  } catch (error) { toast(error.message, true); }
+}
+
+async function resetBitwatch() {
+  try {
+    const data = await api("/api/bitwatch/reset", { method: "POST", body: "{}" });
+    state.bitwatch = data;
+    renderBitwatch(data);
+  } catch (error) { toast(error.message, true); }
+}
+
+async function assignBit(key, label) {
+  try {
+    const data = await api("/api/bitwatch/assign", {
+      method: "POST",
+      body: JSON.stringify({ key, label }),
+    });
+    state.bitwatch = data;
+    const candidate = (data.candidates || []).find((item) => item.key === key);
+    if (candidate) candidate.label = label;
+  } catch (error) { toast(error.message, true); }
+}
+
+function renderBitwatch(data) {
+  if (!data) return;
+  const status = $("bitwatch-status");
+  if (data.active) {
+    status.textContent = `Aufnahme laeuft: ${data.remaining_seconds.toFixed(1)} s | veraenderte Bits: ${data.changed_count} | angezeigt: ${data.candidates.length}`;
+  } else {
+    status.textContent = `Aufnahme beendet | veraenderte Bits: ${data.changed_count} | angezeigt: ${data.candidates.length}`;
+  }
+  $("bitwatch-start").disabled = Boolean(data.active);
+  $("bitwatch-stop").disabled = !data.active;
+  $("bitwatch-reset").disabled = data.active || !data.candidates.length;
+
+  const tbody = $("bitwatch-rows");
+  tbody.replaceChildren();
+  if (!data.candidates.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.className = "empty";
+    cell.textContent = data.active
+      ? "Noch keine veraenderten Bits erkannt. Funktion schalten."
+      : "Keine Bits aufgenommen. Testbetrieb starten und Funktionen schalten.";
+    row.appendChild(cell);
+    tbody.appendChild(row);
+    return;
+  }
+  for (const candidate of data.candidates) {
+    const row = document.createElement("tr");
+    const idCell = document.createElement("td");
+    idCell.textContent = candidate.id_hex || "-";
+    const byteCell = document.createElement("td");
+    byteCell.textContent = String(candidate.byte);
+    const bitCell = document.createElement("td");
+    bitCell.textContent = String(candidate.bit);
+    const changeCell = document.createElement("td");
+    changeCell.textContent = String(candidate.changes);
+    const liveCell = document.createElement("td");
+    const live = document.createElement("span");
+    const liveValue = candidate.live_value;
+    live.className = "badge " + (liveValue === 1 ? "live-on" : liveValue === 0 ? "live-off" : "live-unknown");
+    live.textContent = liveValue === 1 ? "EIN" : liveValue === 0 ? "AUS" : "?";
+    if (candidate.live_age_ms !== null && candidate.live_age_ms !== undefined) {
+      live.title = `Letzter Frame: ${candidate.live_age_ms} ms`;
+    }
+    liveCell.appendChild(live);
+    const labelCell = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "bit-label";
+    input.placeholder = "z. B. Abblendlicht";
+    input.value = candidate.label || "";
+    input.dataset.key = candidate.key;
+    input.addEventListener("focus", () => { bitwatchInputActive = true; });
+    input.addEventListener("blur", () => {
+      bitwatchInputActive = false;
+      assignBit(candidate.key, input.value);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") input.blur();
+    });
+    labelCell.appendChild(input);
+    row.append(idCell, byteCell, bitCell, changeCell, liveCell, labelCell);
+    tbody.appendChild(row);
+  }
 }
 
 /* ---------- Editor / Bestaetigung ---------- */
@@ -767,6 +880,45 @@ function monitorDataFilter(frame) {
   return data.includes(needle);
 }
 
+function monitorExcludeFilter(frame) {
+  const raw = $("monitor-exclude").value.trim();
+  if (!raw) return true;
+  const canId = Number(frame.id);
+  const idHex = (frame.id_hex || `0x${canId.toString(16).toUpperCase()}`).toLowerCase().replace(/^0x/, "");
+  const idDec = String(canId);
+  const data = String(frame.data || "").toLowerCase().replace(/[^0-9a-f]/g, "");
+  const tokens = raw.split(/[\s,;]+/).filter(Boolean);
+  for (const token of tokens) {
+    const clean = token.toLowerCase().replace(/^0x/, "");
+    if (clean === idHex || token === idDec) return false;
+    if (clean.length >= 2 && data.includes(clean)) return false;
+  }
+  return true;
+}
+
+function monitorStaticFilter(frame) {
+  if (!$("monitor-hide-static").checked) return true;
+  const key = `${Number(frame.id)}:${frame.extended ? 1 : 0}`;
+  const entry = state.monitorStable.get(key);
+  if (!entry) return true;
+  return (Date.now() - entry.since) < 10000;
+}
+
+function updateMonitorStable(frames) {
+  const now = Date.now();
+  for (const frame of frames) {
+    const key = `${Number(frame.id)}:${frame.extended ? 1 : 0}`;
+    const data = String(frame.data || "");
+    const entry = state.monitorStable.get(key);
+    if (!entry) {
+      state.monitorStable.set(key, { data, since: now });
+    } else if (entry.data !== data) {
+      entry.data = data;
+      entry.since = now;
+    }
+  }
+}
+
 function scheduleMonitorReload() {
   if (state.monitorFilterTimer) clearTimeout(state.monitorFilterTimer);
   state.monitorFilterTimer = setTimeout(() => pollMonitor(true), 250);
@@ -780,6 +932,7 @@ async function pollMonitor(reset = false) {
     state.monitorLastSeq = 0;
     state.monitorRates = new Map();
     state.monitorMissed = 0;
+    state.monitorStable = new Map();
     $("monitor-frames").replaceChildren();
   }
   state.monitorBusy = true;
@@ -798,6 +951,7 @@ async function pollMonitor(reset = false) {
     if (state.monitorFrames.length > 800) state.monitorFrames = state.monitorFrames.slice(-800);
     state.monitorLastSeq = Number(data.latest_seq) || state.monitorLastSeq;
     state.monitorRates = new Map((data.rates || []).map((entry) => [Number(entry.id), Number(entry.rate)]));
+    updateMonitorStable(data.frames || []);
     renderMonitor();
   } catch (error) {
     const el = $("monitor-stats");
@@ -839,7 +993,12 @@ function renderMonitor() {
 
   const body = $("monitor-frames");
   body.replaceChildren();
-  const rows = state.monitorFrames.filter(monitorDataFilter).slice(-300).reverse();
+  const rows = state.monitorFrames
+    .filter(monitorDataFilter)
+    .filter(monitorExcludeFilter)
+    .filter(monitorStaticFilter)
+    .slice(-300)
+    .reverse();
   const fragment = document.createDocumentFragment();
   for (const frame of rows) {
     const tr = document.createElement("tr");
@@ -973,6 +1132,10 @@ function init() {
   $("assistant-mark").addEventListener("click", () => assistantAction("/api/assistant/mark_action", { action_label: $("assistant-action").value.trim() }));
   $("assistant-evaluate").addEventListener("click", () => assistantAction("/api/assistant/evaluate"));
   $("assistant-reset").addEventListener("click", () => assistantAction("/api/assistant/reset"));
+  $("assistant-capture").addEventListener("click", startBitwatch);
+  $("bitwatch-start").addEventListener("click", startBitwatch);
+  $("bitwatch-stop").addEventListener("click", stopBitwatch);
+  $("bitwatch-reset").addEventListener("click", resetBitwatch);
 
   $("measurement-start").addEventListener("click", startMeasurement);
   $("measurement-stop").addEventListener("click", stopMeasurement);
@@ -1000,6 +1163,8 @@ function init() {
   $("monitor-filter-id").addEventListener("input", scheduleMonitorReload);
   $("monitor-filter-type").addEventListener("change", scheduleMonitorReload);
   $("monitor-filter-data").addEventListener("input", renderMonitor);
+  $("monitor-exclude").addEventListener("input", renderMonitor);
+  $("monitor-hide-static").addEventListener("change", renderMonitor);
   $("monitor-pause").addEventListener("click", () => {
     state.monitorPaused = !state.monitorPaused;
     $("monitor-pause").textContent = state.monitorPaused ? "Fortsetzen" : "Pause";
@@ -1008,6 +1173,7 @@ function init() {
   $("monitor-clear").addEventListener("click", () => {
     state.monitorFrames = [];
     state.monitorMissed = 0;
+    state.monitorStable = new Map();
     $("monitor-frames").replaceChildren();
   });
   $("monitor-record-start").addEventListener("click", monitorRecordStart);
@@ -1018,12 +1184,14 @@ function init() {
   pollSignals();
   pollEvents();
   pollAssistant();
+  pollBitwatch();
   refreshExportFiles();
   pollRawFrames();
   setInterval(pollStatus, 1000);
   setInterval(pollSignals, 1200);
   setInterval(pollEvents, 1000);
   setInterval(() => { if ($("tab-assistant").classList.contains("active")) pollAssistant(); }, 600);
+  setInterval(() => { if ($("tab-bits").classList.contains("active") || (state.bitwatch && state.bitwatch.active)) pollBitwatch(); }, 700);
   setInterval(() => { if ($("tab-monitor").classList.contains("active")) pollMonitor(); }, 500);
   setInterval(() => { if ($("tab-export").classList.contains("active")) { refreshExportFiles(); pollRawFrames(); } }, 3000);
 }

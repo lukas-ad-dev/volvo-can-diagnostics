@@ -149,21 +149,9 @@ class LocalServerTests(unittest.TestCase):
         time.sleep(0.3)
         status, marked = self.request("/api/assistant/mark_action", "POST", {"action_label": "Test EIN"})
         self.assertEqual(status, 200)
-        self.assertEqual(marked["phase"], "action1")
+        self.assertEqual(marked["phase"], "action")
         for index in range(5):
             self.app.ingest(make_frame("0100000000000000", timestamp_us=2000 + index * 1000))
-        time.sleep(0.3)
-        status, marked_off = self.request("/api/assistant/mark_action", "POST", {"action_label": "Test EIN"})
-        self.assertEqual(status, 200)
-        self.assertEqual(marked_off["phase"], "recovery")
-        for index in range(5):
-            self.app.ingest(make_frame("0000000000000000", timestamp_us=4000 + index * 1000))
-        time.sleep(0.3)
-        status, marked_again = self.request("/api/assistant/mark_action", "POST", {"action_label": "Test EIN"})
-        self.assertEqual(status, 200)
-        self.assertEqual(marked_again["phase"], "action2")
-        for index in range(5):
-            self.app.ingest(make_frame("0100000000000000", timestamp_us=6000 + index * 1000))
         time.sleep(0.3)
         status, evaluated = self.request("/api/assistant/evaluate", "POST", {})
         self.assertEqual(status, 200)
@@ -173,6 +161,32 @@ class LocalServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(signal["status"], "candidate")
         self.assertGreaterEqual(len(signal["evidence"]), 1)
+
+    def test_bitwatch_capture_and_assign(self):
+        status, started = self.request("/api/bitwatch/start", "POST", {"duration": 5})
+        self.assertEqual(status, 200)
+        self.assertTrue(started["active"])
+        for index in range(12):
+            data = "0100000000000000" if index % 2 == 0 else "0000000000000000"
+            self.app.ingest(make_frame(data, timestamp_us=index * 1000))
+        _, captured = self.request("/api/bitwatch")
+        self.assertTrue(any(
+            candidate["byte"] == 0 and candidate["bit"] == 0
+            for candidate in captured["candidates"]
+        ))
+        target = next(
+            candidate for candidate in captured["candidates"]
+            if candidate["byte"] == 0 and candidate["bit"] == 0
+        )
+        self.assertGreaterEqual(target["changes"], 1)
+        status, assigned = self.request(
+            "/api/bitwatch/assign", "POST", {"key": target["key"], "label": "Testbit"}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(assigned["assignments"][target["key"]], "Testbit")
+        status, stopped = self.request("/api/bitwatch/stop", "POST", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(stopped["active"])
 
     def test_demo_toggle_and_connection_counters(self):
         _, before = self.request("/api/status")

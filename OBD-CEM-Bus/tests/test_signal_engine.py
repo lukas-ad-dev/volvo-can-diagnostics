@@ -105,24 +105,13 @@ class SignalEngineTests(unittest.TestCase):
             data = "03" if index % 2 == 0 else "01"
             assistant.on_frame(frame(data + "00000000000000", ts=(index + 11) * 100_000), now=11.0 + index)
         assistant.tick(now=21.1)
-        self.assertEqual(assistant.phase, "waiting_off")
-        assistant.mark_action("Rueckwaertsgang EIN", now=21.1)
-        for index in range(10):
-            assistant.on_frame(frame("0000000000000000", ts=(index + 22) * 100_000), now=22.0 + index)
-        assistant.tick(now=32.1)
-        self.assertEqual(assistant.phase, "waiting_action2")
-        assistant.mark_action("Rueckwaertsgang EIN", now=32.1)
-        for index in range(10):
-            data = "03" if index % 2 == 0 else "01"
-            assistant.on_frame(frame(data + "00000000000000", ts=(index + 33) * 100_000), now=33.0 + index)
-        assistant.tick(now=43.1)
         self.assertEqual(assistant.phase, "ready")
-        result = assistant.evaluate(now=43.1)
+        result = assistant.evaluate(now=21.1)
         candidates = result["candidates"]
         self.assertTrue(any(c["byte"] == 0 and c["bit"] == 0 for c in candidates))
         self.assertFalse(any(c["byte"] == 0 and c["bit"] == 1 for c in candidates))
         target = next(c for c in candidates if c["bit"] == 0)
-        self.assertEqual(target["cycles"], 2)
+        self.assertEqual(target.get("cycles", 1), 1)
         self.assertIn("Byte enthaelt wechselnde Bits", target["warnings"])
 
     def test_assistant_requires_counter_action_and_three_runs(self):

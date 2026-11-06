@@ -47,7 +47,7 @@ Dummy-Pin.
 
 | Ordner | Inhalt |
 |---|---|
-| `OBD-CEM-Bus/` | Firmware, Web-GUI, Zwei-Zyklus-Assistent, CEM-Dokumentation |
+| `OBD-CEM-Bus/` | Firmware, Web-GUI, Assistent, Bit-Test, CEM-Dokumentation |
 | `OBD-Low-Bus/` | passive OBD-Analyse, Signalkandidaten, Logger und Tools |
 
 ## Bisherige Ergebnisse
@@ -59,11 +59,37 @@ Dummy-Pin.
 - **OBD-Low-Bus:** Fahrstufe P/R/N/D (`0x1FFF00A0`, Byte 6, Bits 0–1),
   Fußbremse (`0x1FFF0200`, Byte 4, Bit 1) und Rückfahrkamera
   (`0x1FFF0144`, Byte 2, Bit 3) als Kandidaten.
-- **Assistent:** zwei Aktionszyklen (AUS → EIN → AUS → EIN), Live-Anzeige
-  der Kandidatenbits und Binden an eine Zielkachel.
 
 Details stehen in [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md) und
 [`ERGEBNISSE.md`](ERGEBNISSE.md).
+
+## Assistent
+
+Der Assistent arbeitet mit einem Aktionszyklus:
+
+1. 10 s Grundzustand (Aktion AUS)
+2. Aktion EINschalten und markieren
+3. 10 s Aktion aufnehmen
+4. Auswerten
+
+Kandidaten zeigen live `EIN/AUS`; die Zielauswahl wird pro Kandidat
+gespeichert und beim Binden verwendet.
+
+## Bit-Test
+
+Der Tab **Bit-Test** nimmt bis zu **60 Bits** auf, die sich während des
+Testbetriebs ändern. Dauerhaft konstante Bits werden ausgeblendet. Jedes Bit
+zeigt live `EIN/AUS` sowie die Anzahl der Änderungen und kann frei benannt
+werden.
+
+Das ist besonders nützlich, wenn eine Funktion auf mehrere Bits oder Bytes
+verteilt ist: Aufnahme starten, Funktion mehrfach schalten, Bits beobachten
+und anschließend zuordnen. Ein Kontrolllauf ohne Aktion hilft, Zähler und
+Prüfsummen von echten Schaltbits zu unterscheiden.
+
+Der **Live-CAN-Monitor** hat zusätzlich einen Ausschlussfilter (z. B.
+`0x030, 0x1FFF`) und einen Schalter **Dauersignale ausblenden** für Frames,
+deren Daten länger als 10 Sekunden unverändert bleiben.
 
 ## Bauen und testen
 

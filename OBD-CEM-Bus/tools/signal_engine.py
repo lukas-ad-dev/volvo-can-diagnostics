@@ -842,9 +842,7 @@ class AssistantSession:
         self.phase_started_at = None
         self.action_label = ""
         self.baseline = PhaseAccumulator()
-        self.action1 = PhaseAccumulator()
-        self.recovery = PhaseAccumulator()
-        self.action2 = PhaseAccumulator()
+        self.action = PhaseAccumulator()
         self.candidates: List[dict] = []
         self.new_ids: List[dict] = []
         self.missing_ids: List[dict] = []
@@ -862,96 +860,35 @@ class AssistantSession:
         now = now if now is not None else time.monotonic()
         if self.phase == "baseline" and self.phase_started_at is not None and now - self.phase_started_at >= self.duration:
             self.phase = "waiting_action"
-        elif self.phase == "action1" and self.phase_started_at is not None and now - self.phase_started_at >= self.duration:
-            self.phase = "waiting_off"
-        elif self.phase == "recovery" and self.phase_started_at is not None and now - self.phase_started_at >= self.duration:
-            self.phase = "waiting_action2"
-        elif self.phase == "action2" and self.phase_started_at is not None and now - self.phase_started_at >= self.duration:
+        elif self.phase == "action" and self.phase_started_at is not None and now - self.phase_started_at >= self.duration:
             self.phase = "ready"
 
     def on_frame(self, frame: dict, now: Optional[float] = None) -> None:
         self.tick(now)
         if self.phase == "baseline":
             self.baseline.add(frame)
-        elif self.phase == "action1":
-            self.action1.add(frame)
-        elif self.phase == "recovery":
-            self.recovery.add(frame)
-        elif self.phase == "action2":
-            self.action2.add(frame)
+        elif self.phase == "action":
+            self.action.add(frame)
 
     def mark_action(self, label: str = "", now: Optional[float] = None) -> dict:
         now = now if now is not None else time.monotonic()
         self.tick(now)
-        transitions = {
-            "waiting_action": "action1",
-            "waiting_off": "recovery",
-            "waiting_action2": "action2",
-        }
-        next_phase = transitions.get(self.phase)
-        if next_phase is None:
-            raise ValueError("Jetzt nicht markierbar: erst die laufende Phase abwarten")
-        if self.phase == "waiting_action" and label.strip():
+        if self.phase != "waiting_action":
+            raise ValueError("Aktion kann erst nach der Grundzustandsphase markiert werden")
+        if label.strip():
             self.action_label = label.strip()
-        self.phase = next_phase
+        self.phase = "action"
         self.phase_started_at = now
         return self.status(now)
-
-    @staticmethod
-    def _cycle_key(candidate: dict) -> tuple:
-        return (candidate["can_id"], candidate["extended"], candidate["byte"], candidate["bit"])
-
-    @staticmethod
-    def _merge_ids(first: list, second: list) -> list:
-        merged = {}
-        for item in first + second:
-            merged[(item["can_id"], item["extended"])] = item
-        return list(merged.values())
-
-    def _compare_cycles(self) -> dict:
-        first = self.baseline.compare(self.action1)
-        second = self.recovery.compare(self.action2)
-        second_by_key = {self._cycle_key(candidate): candidate for candidate in second["candidates"]}
-        candidates = []
-        for candidate in first["candidates"]:
-            counterpart = second_by_key.get(self._cycle_key(candidate))
-            if counterpart is None:
-                continue
-            if candidate["a_value"] != counterpart["a_value"]:
-                continue
-            if candidate["b_value"] != counterpart["b_value"]:
-                continue
-            if candidate["a_value"] == candidate["b_value"]:
-                continue
-            warnings = []
-            for warning in candidate["warnings"] + counterpart["warnings"]:
-                if warning not in warnings:
-                    warnings.append(warning)
-            candidates.append({
-                **candidate,
-                "warnings": warnings,
-                "score": round(min(candidate["score"], counterpart["score"]), 1),
-                "cycles": 2,
-                "count_a": candidate["count_a"] + counterpart["count_a"],
-                "count_b": candidate["count_b"] + counterpart["count_b"],
-                "cycle_a_values": [candidate["a_value"], counterpart["a_value"]],
-                "cycle_b_values": [candidate["b_value"], counterpart["b_value"]],
-            })
-        candidates.sort(key=lambda item: item["score"], reverse=True)
-        return {
-            "candidates": candidates,
-            "new_ids": self._merge_ids(first["new_ids"], second["new_ids"]),
-            "missing_ids": self._merge_ids(first["missing_ids"], second["missing_ids"]),
-        }
 
     def evaluate(self, now: Optional[float] = None) -> dict:
         now = now if now is not None else time.monotonic()
         self.tick(now)
         if self.phase != "ready":
-            if self.phase in {"action1", "recovery", "action2"}:
-                raise ValueError("Die laufende Phase ist noch nicht beendet")
-            raise ValueError("Noch keine vollstaendige Zwei-Zyklus-Auswertung vorhanden")
-        result = self._compare_cycles()
+            if self.phase == "action":
+                raise ValueError("Aktionsphase ist noch nicht beendet")
+            raise ValueError("Noch keine auswertbare Aktion vorhanden")
+        result = self.baseline.compare(self.action)
         self.candidates = result["candidates"]
         self.new_ids = result["new_ids"]
         self.missing_ids = result["missing_ids"]
@@ -962,28 +899,20 @@ class AssistantSession:
         now = now if now is not None else time.monotonic()
         self.tick(now)
         remaining = 0.0
-        if self.phase in {"baseline", "action1", "recovery", "action2"} and self.phase_started_at is not None:
+        if self.phase in {"baseline", "action"} and self.phase_started_at is not None:
             remaining = max(0.0, self.duration - (now - self.phase_started_at))
-        action_ids = len(set(self.action1.ids) | set(self.action2.ids))
         return {
             "run_id": self.run_id,
             "phase": self.phase,
             "action_label": self.action_label,
             "remaining_seconds": round(remaining, 1),
             "baseline_frames": sum(entry["count"] for entry in self.baseline.ids.values()),
-            "action1_frames": sum(entry["count"] for entry in self.action1.ids.values()),
-            "recovery_frames": sum(entry["count"] for entry in self.recovery.ids.values()),
-            "action2_frames": sum(entry["count"] for entry in self.action2.ids.values()),
-            "action_frames": sum(entry["count"] for entry in self.action1.ids.values())
-                              + sum(entry["count"] for entry in self.action2.ids.values()),
+            "action_frames": sum(entry["count"] for entry in self.action.ids.values()),
             "baseline_ids": len(self.baseline.ids),
-            "action1_ids": len(self.action1.ids),
-            "recovery_ids": len(self.recovery.ids),
-            "action2_ids": len(self.action2.ids),
-            "action_ids": action_ids,
+            "action_ids": len(self.action.ids),
             "candidates": self.candidates,
             "new_ids": self.new_ids,
             "missing_ids": self.missing_ids,
             "duration_seconds": self.duration,
-            "cycles": 2,
+            "cycles": 1,
         }

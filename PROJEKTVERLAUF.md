@@ -68,13 +68,13 @@ Steuergeräte codieren oder Fahrzeugfunktionen steuern. Das Projekt ist
 - Autorisierter read-only Live-Test: **289.647 Frames**, **24 IDs**,
   **0 CAN-Fehler**, 33 USB-Queue-Drops, TWAI **RUNNING**.
 - Danach sauberer STOP; keine CAN-Sendeaktion.
-- Assistent auf **zwei Aktionszyklen** erweitert:
-  AUS → EIN → AUS → EIN → Auswertung.
-- Kandidaten zeigen live `EIN/AUS`; Zielsignal-Auswahl pro Kandidat wird
-  beim Binden übernommen.
-- Letzter Test „standlicht“ ergab 0 Kandidaten, weil in beiden EIN-Zyklen
-  kein Bit stabil wechselte. Das war kein UI-Fehler, sondern die Aktion
-  erzeugte im CEM-Datenstrom keinen reproduzierbaren Zustandswechsel.
+- Assistent mit einem Aktionszyklus; Kandidaten zeigen live EIN/AUS,
+  Zielauswahl pro Kandidat wird beim Binden uebernommen.
+- Neue **Bit-Test**-Seite: bis zu 60 Bits, die sich waehrend des Testbetriebs
+  aendern, mit Live-Anzeige und freier Zuordnung.
+- Letzter Abblendlicht-Test im alten Zwei-Zyklus-Modus: 0 Kandidaten, weil
+  kein Bit stabil wechselte. Der Assistent wurde wieder auf einen Zyklus
+  zurueckgestellt.
 - Repository mit Code, Doku, Hardware- und CAN-Bus-Infos erstellt.
 
 ## Bisherige Ergebnisse
@@ -87,7 +87,7 @@ Steuergeräte codieren oder Fahrzeugfunktionen steuern. Das Projekt ist
 | CEM-Fehler | 0 CAN-/Bus-/TX-/RX-Fehler im Live-Lauf |
 | OBD-Low-Signale | Fahrstufe, Fußbremse, Rückfahrkamera als Kandidaten |
 | CEM-Decoder | noch keine bestätigten CEM-Signale |
-| Assistent | zwei Zyklen, Live-Bit-Anzeige, Bind-Auswahl |
+| Assistent | ein Zyklus, Live-Bit-Anzeige, Bind-Auswahl |
 | Hardware-Passivität | noch nicht messtechnisch vollständig nachgewiesen |
 
 ## Offene Fragen

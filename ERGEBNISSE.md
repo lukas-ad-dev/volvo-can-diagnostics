@@ -26,10 +26,11 @@ Fenstergrenze ab.
 
 ### CEM-Signale
 
-Noch **keine bestätigten CEM-Decoder**. Der Assistent zeigte bei
-„standlicht“ 0 Kandidaten, weil in beiden EIN-Zyklen kein Bit stabil
-wechselte. Für den nächsten Test eine sicher schaltbare Aktion verwenden
-(z. B. Fernlicht oder Rückwärtsgang) und die zwei Zyklen exakt einhalten.
+Noch **keine bestätigten CEM-Decoder**. Der Assistent arbeitet mit einem
+Aktionszyklus; zusätzlich sammelt der Bit-Test bis zu 60 ändernde Bits und
+zeigt sie live als EIN/AUS. Der letzte Abblendlicht-Test im alten
+Zwei-Zyklus-Modus ergab 0 Kandidaten; für den nächsten Test eine sicher
+schaltbare Aktion verwenden.
 
 ## OBD-Low-Bus
 

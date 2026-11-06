@@ -101,9 +101,10 @@ Die Tabelle absichtlich leer. Eintraege erst nach reproduzierbaren Messungen erg
 ## Messdaten ablegen
 
 - Kurze Messungen: CSV/JSON ueber die Weboberflaeche herunterladen (Aufzeichnung vorher stoppen).
-- Lange Messungen: Python-Collector auf Windows verwenden (siehe `INSTALLATION.md`).
+- Lange Messungen: Python-Collector auf Windows verwenden.
 - Dateinamen mit Datum, Fahrzeugzustand und Aktion versehen, z. B. `2026-11-03_kamera-aus-an_phase-a.csv`.
 - Vergleichs-Exporte (`volvo-can-vergleich.csv/json`) gemeinsam mit den Rohdaten ablegen.
+- Keine personenbezogenen Daten oder Standortdaten in oeffentliche Ablagen uebernehmen.
 
 ## Demo-Daten
 

@@ -64,6 +64,7 @@
     <button class="tab active" data-tab="signals">Signale</button>
     <button class="tab" data-tab="monitor">Live-CAN-Monitor</button>
     <button class="tab" data-tab="assistant">Assistent</button>
+    <button class="tab" data-tab="bits">Bit-Test</button>
     <button class="tab" data-tab="live">Live-Test &amp; Zeitlinie</button>
     <button class="tab" data-tab="editor">Signal-Editor</button>
     <button class="tab" data-tab="references">Referenzen</button>
@@ -96,11 +97,13 @@
         <div class="toolbar">
           <input id="monitor-filter-id" type="text" placeholder="CAN-ID filtern, z. B. 1A0" autocomplete="off">
           <input id="monitor-filter-data" type="text" placeholder="Datenbytes filtern, z. B. 01 FF" autocomplete="off">
+          <input id="monitor-exclude" type="text" placeholder="ausblenden: 0x030, 0x1FFF, 0x025" autocomplete="off">
           <select id="monitor-filter-type" aria-label="Frame-Typ">
             <option value="all">STD + EXT</option>
             <option value="std">nur Standard</option>
             <option value="ext">nur Extended</option>
           </select>
+          <label class="check"><input id="monitor-hide-static" type="checkbox"> Dauersignale ausblenden (&gt;10 s unveraendert)</label>
           <button id="monitor-pause" class="button secondary" type="button">Pause</button>
           <button id="monitor-clear" class="button secondary" type="button">Leeren</button>
         </div>
@@ -135,9 +138,48 @@
           <button id="assistant-mark" class="button secondary" type="button">Aktion markieren</button>
           <button id="assistant-evaluate" class="button secondary" type="button">Auswerten</button>
           <button id="assistant-reset" class="button secondary" type="button">Zuruecksetzen</button>
+          <button id="assistant-capture" class="button secondary" type="button">Testbetrieb aufnehmen</button>
         </div>
         <div id="assistant-status" class="assistant-status">Bereit.</div>
         <div id="assistant-candidates"></div>
+      </div>
+    </section>
+
+    <section id="tab-bits" class="tab-panel">
+      <div class="panel">
+        <h2>Live-Bit-Test</h2>
+        <p class="muted">
+          Nimmt Bits auf, die sich während des Testbetriebs ändern. Dauerhaft
+          konstante Bits werden nicht angezeigt. Bis zu 60 Bits; Änderungszahl
+          hilft, Zähler von echten Schaltbits zu unterscheiden. Danach jede
+          Zeile live beobachten und eine eigene Zuordnung vergeben.
+        </p>
+        <div class="toolbar">
+          <button id="bitwatch-start" class="button" type="button">Testbetrieb aufnehmen</button>
+          <button id="bitwatch-stop" class="button secondary" type="button">Aufnahme stoppen</button>
+          <button id="bitwatch-reset" class="button secondary" type="button">Liste leeren</button>
+          <span id="bitwatch-status" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>CAN-ID</th>
+                <th>Byte</th>
+                <th>Bit</th>
+                <th>Änderungen</th>
+                <th>Live</th>
+                <th>Zuordnung</th>
+              </tr>
+            </thead>
+            <tbody id="bitwatch-rows"></tbody>
+          </table>
+        </div>
+        <p class="muted small">
+          Tipp: Erst ohne Aktion aufnehmen (Kontrolllauf), dann mit der Aktion
+          wiederholen. Bits mit sehr hoher Änderungszahl sind meist Zähler;
+          Bits mit wenigen, gerichteten Wechseln sind interessanter.
+        </p>
       </div>
     </section>
 

@@ -124,6 +124,23 @@ class DiagnosticsApp:
         self.demo_flag = False
         self.firmware_stats: dict = {}
         self.latest_by_id: dict = {}
+        self.bit_assignment_path = self.config_dir / "bit_assignments.json"
+        self.bit_assignments: dict = {}
+        try:
+            loaded_assignments = json.loads(self.bit_assignment_path.read_text(encoding="utf-8"))
+            if isinstance(loaded_assignments, dict):
+                self.bit_assignments = {
+                    str(key): str(value) for key, value in loaded_assignments.items()
+                }
+        except (OSError, ValueError):
+            self.bit_assignments = {}
+        self.bitwatch: dict = {
+            "active": False,
+            "started": None,
+            "duration": 30.0,
+            "tracked": {},
+            "frozen": [],
+        }
         self.events: deque = deque(maxlen=2500)
         self.frames: deque = deque(maxlen=2000)
         self.monitor_seq = 0
@@ -228,6 +245,8 @@ class DiagnosticsApp:
                 "monotonic": now,
                 "seq": int(frame.get("seq", 0)),
             }
+            if self.bitwatch.get("active"):
+                self._bitwatch_track_locked(frame, now)
             self.logger.record(frame)
             self._write_raw(
                 {
@@ -548,6 +567,194 @@ class DiagnosticsApp:
                 candidates.append(item)
             data["candidates"] = candidates
             return data
+
+    def bitwatch_start(self, duration: float = 30.0) -> dict:
+        with self.lock:
+            seconds = max(5.0, min(float(duration), 300.0))
+            self.bitwatch = {
+                "active": True,
+                "started": time.monotonic(),
+                "duration": seconds,
+                "tracked": {},
+                "frozen": [],
+            }
+            self.record_event("bitwatch_start", duration=seconds)
+            return self._bitwatch_status_locked(time.monotonic())
+
+    def bitwatch_stop(self) -> dict:
+        with self.lock:
+            self._bitwatch_freeze_locked(time.monotonic())
+            return self._bitwatch_status_locked(time.monotonic())
+
+    def bitwatch_reset(self) -> dict:
+        with self.lock:
+            self.bitwatch = {
+                "active": False,
+                "started": None,
+                "duration": 30.0,
+                "tracked": {},
+                "frozen": [],
+            }
+            self.record_event("bitwatch_reset")
+            return self._bitwatch_status_locked(time.monotonic())
+
+    def bitwatch_assign(self, key: str, label: str) -> dict:
+        key = key.strip()
+        if not key:
+            raise ValueError("Bit-Schluessel fehlt")
+        with self.lock:
+            label = label.strip()
+            if label:
+                self.bit_assignments[key] = label
+            else:
+                self.bit_assignments.pop(key, None)
+            try:
+                temporary = self.bit_assignment_path.with_suffix(".json.tmp")
+                temporary.write_text(
+                    json.dumps(self.bit_assignments, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                os.replace(temporary, self.bit_assignment_path)
+            except OSError:
+                pass
+            self.record_event("bitwatch_assign", key=key, label=label)
+            return self._bitwatch_status_locked(time.monotonic())
+
+    def bitwatch_status(self) -> dict:
+        with self.lock:
+            return self._bitwatch_status_locked(time.monotonic())
+
+    @staticmethod
+    def _bitwatch_key(can_id: int, extended: bool, byte: int, bit: int) -> str:
+        return f"{can_id}:{1 if extended else 0}:{byte}:{bit}"
+
+    def _bitwatch_track_locked(self, frame: dict, now: float) -> None:
+        state = self.bitwatch
+        if not state.get("active"):
+            return
+        started = state.get("started")
+        if started is not None and now - started >= state.get("duration", 30.0):
+            self._bitwatch_freeze_locked(now)
+            return
+        try:
+            payload = bytes.fromhex(str(frame.get("data", "")))
+        except ValueError:
+            return
+        can_id = int(frame.get("id", 0))
+        extended = bool(frame.get("extended"))
+        id_hex = f"0x{can_id:0{8 if extended else 3}X}"
+        dlc = min(int(frame.get("dlc", 0)), len(payload), 8)
+        tracked = state["tracked"]
+        for byte in range(dlc):
+            value_byte = payload[byte]
+            for bit in range(8):
+                key = self._bitwatch_key(can_id, extended, byte, bit)
+                value = (value_byte >> bit) & 1
+                entry = tracked.get(key)
+                if entry is None:
+                    tracked[key] = {
+                        "key": key,
+                        "can_id": can_id,
+                        "extended": extended,
+                        "id_hex": id_hex,
+                        "byte": byte,
+                        "bit": bit,
+                        "changes": 0,
+                        "samples": 1,
+                        "last_value": value,
+                        "last_change": now,
+                        "first_seen": now,
+                        "last_seen": now,
+                    }
+                    continue
+                entry["samples"] += 1
+                entry["last_seen"] = now
+                if entry["last_value"] != value:
+                    entry["changes"] += 1
+                    entry["last_value"] = value
+                    entry["last_change"] = now
+
+    def _bitwatch_freeze_locked(self, now: float) -> None:
+        state = self.bitwatch
+        if not state.get("active"):
+            return
+        changed = [
+            dict(entry) for entry in state["tracked"].values() if entry["changes"] > 0
+        ]
+        changed.sort(
+            key=lambda entry: (
+                entry["changes"], entry["last_change"], entry["can_id"],
+                entry["byte"], entry["bit"],
+            ),
+            reverse=True,
+        )
+        state["frozen"] = changed[:60]
+        state["active"] = False
+        state["ended"] = now
+        self.record_event(
+            "bitwatch_stop",
+            candidates=len(state["frozen"]),
+            changed=len(changed),
+            tracked=len(state["tracked"]),
+        )
+
+    def _bitwatch_status_locked(self, now: float) -> dict:
+        state = self.bitwatch
+        started = state.get("started")
+        duration = float(state.get("duration", 30.0))
+        if state.get("active") and started is not None and now - started >= duration:
+            self._bitwatch_freeze_locked(now)
+        changed = [
+            dict(entry) for entry in state.get("tracked", {}).values() if entry["changes"] > 0
+        ]
+        if state.get("active"):
+            changed.sort(
+                key=lambda entry: (
+                    entry["changes"], entry["last_change"], entry["can_id"],
+                    entry["byte"], entry["bit"],
+                ),
+                reverse=True,
+            )
+            entries = changed[:60]
+        else:
+            entries = [dict(entry) for entry in state.get("frozen", [])]
+        result = []
+        for entry in entries:
+            item = dict(entry)
+            item["label"] = self.bit_assignments.get(entry["key"], "")
+            item["live_value"] = None
+            item["live_age_ms"] = None
+            item["live_stale"] = True
+            latest = self.latest_by_id.get((entry["can_id"], entry["extended"]))
+            if latest is not None:
+                age_ms = round((now - latest["monotonic"]) * 1000, 1)
+                item["live_age_ms"] = age_ms
+                item["live_received_iso"] = latest["received_iso"]
+                item["live_data"] = latest["data"]
+                item["live_stale"] = age_ms > 1500
+                if not item["live_stale"]:
+                    try:
+                        payload = bytes.fromhex(latest["data"])
+                        if entry["byte"] < len(payload):
+                            item["live_value"] = (
+                                payload[entry["byte"]] >> entry["bit"]
+                            ) & 1
+                    except ValueError:
+                        item["live_value"] = None
+            result.append(item)
+        remaining = 0.0
+        if state.get("active") and started is not None:
+            remaining = max(0.0, duration - (now - started))
+        return {
+            "active": bool(state.get("active")),
+            "duration": duration,
+            "remaining_seconds": round(remaining, 1),
+            "tracked_count": len(state.get("tracked", {})),
+            "changed_count": len(changed),
+            "candidates": result,
+            "max_candidates": 60,
+            "assignments": dict(self.bit_assignments),
+        }
 
     # ---------- assistant ----------
     def assistant_start(self, action_label: str = "") -> dict:
@@ -925,6 +1132,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(self.app.monitor(since, limit, id_filter, frame_type))
             elif path == "/api/assistant":
                 self._send_json({"assistant": self.app.assistant_data(), "scenarios": SCENARIOS})
+            elif path == "/api/bitwatch":
+                self._send_json(self.app.bitwatch_status())
             elif path == "/api/export/list":
                 self._send_json(self.app.export_files())
             elif path == "/api/export/session":
@@ -980,6 +1189,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(self.app.can_start())
             elif path == "/api/can/stop":
                 self._send_json(self.app.can_stop())
+            elif path == "/api/bitwatch/start":
+                self._send_json(self.app.bitwatch_start(float(body.get("duration", 30.0))))
+            elif path == "/api/bitwatch/stop":
+                self._send_json(self.app.bitwatch_stop())
+            elif path == "/api/bitwatch/reset":
+                self._send_json(self.app.bitwatch_reset())
+            elif path == "/api/bitwatch/assign":
+                self._send_json(self.app.bitwatch_assign(
+                    str(body.get("key", "")), str(body.get("label", ""))
+                ))
             elif path == "/api/signals":
                 self._send_json(self.app.save_signal(body))
             elif path == "/api/signals/status":
