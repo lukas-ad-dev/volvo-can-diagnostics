@@ -1,9 +1,9 @@
-# Volvo CAN Diagnostics – CEM & OBD Low Bus
+# Volvo CAN
 
-Passive CAN-Analyse für einen **Volvo V90 T8 (SPA-Plattform, Modelljahr 2021)**
-mit dem Waveshare **ESP32-S3-RS485-CAN**. Das Projekt dokumentiert zwei
-CAN-Busse und die Werkzeuge, mit denen Nachrichten ausschließlich gelesen und
-ausgewertet werden.
+Hier dokumentiere ich meine passive Analyse der CAN-Busse in einem Volvo V90
+T8 (SPA, Modelljahr 2021). Als Hardware nutze ich ein Waveshare
+ESP32-S3-RS485-CAN. Der Schwerpunkt liegt auf dem internen CEM-Bus und den
+Werkzeugen, mit denen ich die Nachrichten aufzeichne und auswerte.
 
 ## Fahrzeug und Busse
 
@@ -12,89 +12,69 @@ ausgewertet werden.
 | Fahrzeug | Volvo V90 T8, SPA, Modelljahr 2021 |
 | OBD-Diagnosebus | OBD2 Pin 6/14, älterer Analysepfad |
 | CEM-CAN | interner CAN-Bus hinter dem Fahrerfach |
-| Bitrate CEM | 500 kbit/s (durch Live-Messung bestätigt) |
-| Betriebsart | ausschließlich LISTEN_ONLY, kein Senden |
+| Bitrate CEM | 500 kbit/s, mit echten Frames geprüft |
+| Betriebsart | nur passiv, kein Senden |
 
-## Ziel
+Ich lese ausschließlich mit. Das Projekt sendet keine CAN-Nachrichten, stellt
+keine Diagnoseanfragen und verändert keine Steuergeräte.
 
-Die Signale des Fahrzeugs werden passiv identifiziert und dokumentiert:
+## Was ich bisher gefunden habe
 
-- Rückwärtsgang und Fahrgeschwindigkeit
-- Abblendlicht, Fernlicht, Standlicht, Wegbeleuchtung
-- Blinker links/rechts und Warnblinker
-- Parkkamera und Rangiermodus
-- Ver- und Entriegelung, Fahrertür
-- Zündung, Komfort/Radio, Fahrzeug wach/Ruhezustand
+Die folgende Tabelle zeigt den aktuellen Stand aus mehreren Aufzeichnungen.
+Einige Zustände sind im Test mehrfach aufgetreten, andere sind noch offen.
 
-Das Projekt sendet **keine CAN-Nachrichten**, stellt keine Diagnoseanfragen und
-verändert keine Steuergeräte.
-
-## Aktueller Stand – 2026-11-06
-
-### CEM-CAN
-
-- **500 kbit/s**, fester Testbetrieb, **LISTEN_ONLY**
-- **24 Standard-11-Bit-IDs**, keine Extended-IDs auf diesem Abgriff
-- Live-Aufzeichnungen mit mehreren Millionen Frames
-- Im normalen Empfang **0 Busfehler**; Busfehler treten nur im Zusammenhang mit
-  Bus-Schlaf-/Wake-Zyklen auf
-- Echter TXD bleibt `INPUT_PULLUP`; TWAI-TX nutzt einen Dummy-Pin
-- Kein Auto-Start, kein Bitratenscan, kein Auto-Neuversuch
-
-### Erkannte Licht- und Blinkzustände
-
-Die wichtigsten bisher reproduzierbaren Zustände:
-
-| Funktion | CAN-ID | Feld | Zustand | Bewertung |
+| Funktion | CAN-ID | Feld | Zustand | Stand |
 |---|---|---|---|---|
-| Licht AUS/Standlicht | `0x030`/`0x035` | Byte 2–3 | `7C61` | beobachtet |
-| Wegbeleuchtung/Coming Home | `0x030`/`0x035` | Byte 2–3 | `7C60` | Kandidat |
-| Abblendlicht | `0x030`/`0x035` | Byte 2–3 | `86 03` | praktisch bestätigt |
-| Fernlicht manuell | `0x030`/`0x035` | Byte 2–3 | `92 2B` | praktisch bestätigt |
-| Fernlicht Automatik/Nacht | `0x030`/`0x035` | Byte 2–3 | `92 6B` | praktisch bestätigt |
-| Fernlicht weitere Basis | `0x030`/`0x035` | Byte 2–3 | `92 4B` | beobachtet |
-| Fernlicht generisch | `0x030`/`0x035` | Byte 2–3 | Maske `0x9008` | Kandidat |
-| Lichthupe | `0x030`/`0x035` | Byte 2–3 | `7C69` | bei Abblendlicht AUS bestätigt |
-| Blinker links Befehl | `0x040` | Byte 5, Bit 4 | 0/1 | beobachtet |
-| Blinker rechts Befehl | `0x040` | Byte 5, Bit 5 | 0/1 | beobachtet |
-| Warnblinker Befehl | `0x040` | Byte 5, Bits 4+5 | beide 1 | beobachtet |
-| Blinkstatus normal | `0x050` | Byte 4–7 | `01 90 01 90` | links/rechts |
-| Warnblinkerstatus | `0x050` | Byte 4–7 | `01 F4 01 2C` | Warnblinker |
+| Licht aus / Standlicht | `0x030`/`0x035` | Byte 2-3 | `7C61` | beobachtet |
+| Wegbeleuchtung / Coming Home | `0x030`/`0x035` | Byte 2-3 | `7C60` | Kandidat |
+| Abblendlicht | `0x030`/`0x035` | Byte 2-3 | `86 03` | im Test bestätigt |
+| Fernlicht manuell | `0x030`/`0x035` | Byte 2-3 | `92 2B` | im Test bestätigt |
+| Fernlicht Automatik/Nacht | `0x030`/`0x035` | Byte 2-3 | `92 6B` | im Test bestätigt |
+| Fernlicht weitere Basis | `0x030`/`0x035` | Byte 2-3 | `92 4B` | beobachtet |
+| Fernlicht generisch | `0x030`/`0x035` | Byte 2-3 | Maske `0x9008` | Kandidat |
+| Lichthupe | `0x030`/`0x035` | Byte 2-3 | `7C69` | bei Abblendlicht aus bestätigt |
+| Blinker links | `0x040` | Byte 5, Bit 4 | 0/1 | beobachtet |
+| Blinker rechts | `0x040` | Byte 5, Bit 5 | 0/1 | beobachtet |
+| Warnblinker | `0x040` | Byte 5, Bits 4+5 | beide 1 | beobachtet |
+| Blinkstatus normal | `0x050` | Byte 4-7 | `01 90 01 90` | links/rechts |
+| Warnblinkerstatus | `0x050` | Byte 4-7 | `01 F4 01 2C` | Warnblinker |
 
-`0x030` und `0x035` sind Zwillingsnachrichten: Bytes 1–7 sind identisch, Byte 0
-unterscheidet sich konstant um XOR `0x65`. Byte 0 ist ein Zähler/Integritätsfeld
-und kein Schaltsignal. `0x040` Byte 5 enthält außerdem stark flatternde
-Zählerbits; nur die Bits 4 und 5 sind für die Blinker relevant.
+`0x030` und `0x035` sind Zwillingsnachrichten. Die Bytes 1 bis 7 sind gleich,
+Byte 0 unterscheidet sich immer um XOR `0x65`. Byte 0 ist ein Zähler- und
+Integritätsfeld, kein Schaltsignal. In `0x040` Byte 5 wechseln zusätzlich
+einige Zählerbits sehr schnell. Für den Blinker zählen nur Bit 4 und Bit 5.
 
-### Offene Punkte
+## Was noch offen ist
 
-- Der **Trigger-Befehl für Wegbeleuchtung/Coming Home** wurde noch nicht
-  gefunden. Beim Bus-Schlaf/Wake erscheinen `0x531`/`0x532` mit
-  `31 40 …`/`32 40 …`; das sind wahrscheinlich Network-Management-/Wake-Frames,
-  kein Lichtbefehl.
-- **Bremspedal und Fahrstufe N/R** waren auf dem CEM-11-Bit-Bus nicht als
-  stabile Zustände sichtbar. Die bekannten Referenzen liegen im
-  OBD-Low-Bus-Bereich (`0x1FFF...`) und müssen dort geprüft werden.
-- Die Hardware-Passivität (120-Ω-Jumper, Verkabelung, Isolator/TXD) ist noch
-  nicht vollständig messtechnisch nachgewiesen.
+Den Einschaltbefehl für die Wegbeleuchtung habe ich noch nicht gefunden.
+Während der Wegbeleuchtung bleibt `0x030`/`0x035` auf `7C60`. Beim Aufwachen
+des Busses erscheinen `0x531` (`31 40 ...`) und `0x532` (`32 40 ...`). Das
+sieht nach Network-Management aus, nicht nach einem Lichtbefehl.
 
-## Projekte
+Bremspedal und Fahrstufe N/R konnte ich auf dem CEM-11-Bit-Bus nicht als
+stabile Zustände sehen. Die bekannten Referenzen liegen im OBD-Low-Bus-Bereich
+(`0x1FFF...`) und müssen dort geprüft werden.
 
-| Ordner | Inhalt |
-|---|---|
-| `OBD-CEM-Bus/` | Firmware, Web-GUI, Signalanalyse, Bit-Test, CEM-Dokumentation |
-| `OBD-Low-Bus/` | passive OBD-Analyse, Signalkandidaten, Logger und Tools |
+Die Hardware ist noch nicht vollständig durchgemessen. Offen sind vor allem
+der 120-Ohm-Jumper, die Verkabelung und der TXD-Pfad.
 
 ## Werkzeuge
 
-Die lokale Windows-Oberfläche bietet:
+Die lokale Oberfläche läuft auf Windows und bietet:
 
-- Live-CAN-Monitor mit ID-Filter und Ausblenden von Dauersignalen
-- Assistent mit einem Aktionszyklus und Live-EIN/AUS-Anzeige
-- Bit-Test für bis zu 60 ändernde Bits
+- Live-Monitor mit Filter für CAN-IDs und Ausblenden von Dauersignalen
+- Prüfablauf mit einem Aktionszyklus und Live-Anzeige EIN/AUS
+- Bit-Test für bis zu 60 Bits, die sich während des Tests ändern
 - Signalanalyse mit A/B-Vergleich, Bitmatrix, Zeitdiagramm und CSV/JSON-Export
-- Messungsverwaltung: Start/Stop mit eigenem Namen, getrennte CSV-Dateien
-- Kompakte Signal-Karten; Details erst auf Klick; Altbestände im Archiv
+- Messungen mit eigenem Namen, Start/Stop und getrennten CSV-Dateien
+- Kompakte Signal-Karten, Details per Klick und ein Archiv für alte Kandidaten
+
+## Aufbau
+
+| Ordner | Inhalt |
+|---|---|
+| `OBD-CEM-Bus/` | Firmware, lokale Oberfläche, Signalanalyse, Bit-Test, CEM-Doku |
+| `OBD-Low-Bus/` | OBD-Analyse, Signalkandidaten, Logger und Tools |
 
 ## Bauen und testen
 
@@ -111,26 +91,24 @@ python OBD-CEM-Bus/tools/check_local_web.py
 
 ## Start unter Windows
 
-Die CEM-Firmware wird über USB-CDC angesprochen. Der lokale Diagnoseserver
-läuft auf `http://127.0.0.1:8765/`. Startskripte und weitere Hinweise liegen
+Die Firmware läuft über USB-CDC. Der lokale Server ist unter
+`http://127.0.0.1:8765/` erreichbar. Startskripte und weitere Hinweise liegen
 im jeweiligen Projektordner.
 
 ## Dokumentation
 
-- [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md) – Fahrzeug, Ziel, Zeitlinie und
-  Entwicklung
-- [`ERGEBNISSE.md`](ERGEBNISSE.md) – Messwerte, CAN-IDs und Signalkandidaten
-- `OBD-CEM-Bus/docs/` – Hardware, Sicherheit, Architektur und CEM-Test
-- `OBD-Low-Bus/docs/` – OBD-Messungen und Signalerkennung
-- Öffentliche Projektseite: **Lukas AD Wiki → Projekt:Volvo/CAN**
+- [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md): Fahrzeug, Ziel und bisheriger Verlauf
+- [`ERGEBNISSE.md`](ERGEBNISSE.md): Messwerte, CAN-IDs und Signalkandidaten
+- `OBD-CEM-Bus/docs/`: Hardware, Sicherheit, Architektur und CEM-Test
+- `OBD-Low-Bus/docs/`: OBD-Messungen und Signalerkennung
+- Im Wiki: `Projekt:Volvo/CAN`
 
 ## Lizenz
 
-**MIT-Lizenz** – siehe [`LICENSE`](LICENSE). Copyright (c) 2026 **lukas-ad**.
+MIT-Lizenz, siehe [`LICENSE`](LICENSE). Copyright (c) 2026 lukas-ad.
 
 ## Hinweis
 
-Dieses Projekt steht in keiner Verbindung zu Volvo Cars. CAN-IDs und
-Signalangaben sind eigene Analyseergebnisse und keine offiziellen
-Herstellerdaten. Arbeiten am Fahrzeug nur bei sicherem Stand und mit
-passender Hardware; die Verantwortung für den Eingriff liegt beim Betreiber.
+Das Projekt gehört nicht zu Volvo Cars. Die CAN-IDs und Zustände sind meine
+eigenen Analyseergebnisse und keine offiziellen Herstellerdaten. Arbeiten am
+Fahrzeug nur bei sicherem Stand und mit passender Hardware.

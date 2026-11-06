@@ -59,7 +59,7 @@ Diese Eintraege stehen auch in `config/reference_ids.json` und sind ausdruecklic
 ## Konsequenz fuer die Praxis
 
 1. Die Referenz-IDs nicht als Decoder eintragen.
-2. Eigene Messungen mit dem Assistenten durchfuehren: 10 s Grundzustand, Aktion, 10 s Aktion, Gegenaktion, mindestens drei unabhaengige Wiederholungen.
+2. Eigene Messungen mit dem Pruefablaeufe durchfuehren: 10 s Grundzustand, Aktion, 10 s Aktion, Gegenaktion, mindestens drei unabhaengige Wiederholungen.
 3. Kandidaten mit stabilen Bits und Warnungen (Zaehler/Pruefsumme) sammeln.
 4. Nur nach dokumentierter praktischer Pruefung bestaetigen; bestaetigte Definitionen werden getrennt in `config/confirmed_signals.json` gespeichert.
 5. Bei fehlenden Frames zuerst Gateway/OBD-Anschlussstelle, Bitrate und CAN H/L pruefen, nicht automatisch einen Firmwarefehler annehmen.

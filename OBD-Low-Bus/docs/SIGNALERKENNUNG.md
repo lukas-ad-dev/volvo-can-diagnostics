@@ -67,7 +67,7 @@ Beispiele:
 
 Speichern erzeugt hoechstens einen **Kandidaten**. Eine geaenderte Definition setzt eine alte Bestaetigung zurueck und verwirft die bisherige Evidenz. Der Editor sendet nichts an das Fahrzeug; er schreibt nur `config/signals.json`.
 
-## Messassistent
+## Pruefablauf
 
 Ziel: Ein Bit finden, das sich bei einer definierten Aktion reproduzierbar aendert.
 
@@ -79,7 +79,7 @@ Ziel: Ein Bit finden, das sich bei einer definierten Aktion reproduzierbar aende
 6. **Gegenaktion.** Neuen Lauf mit der Gegenaktion starten (z. B. Rueckwaertsgang AUS) und denselben Kandidaten binden.
 7. **Wiederholen.** Mindestens drei unabhaengige Laeufe mit mindestens zwei unterschiedlichen Aktionsbezeichnungen.
 
-Der Assistent markiert Warnungen:
+Der Pruefablauf markiert Warnungen:
 
 - **andere Bits wechseln**: moeglicher Zaehler, Pruefsumme oder Mischsignal.
 - **Byte enthaelt wechselnde Bits**: der Kandidat ist weniger vertrauenswuerdig.
@@ -122,7 +122,7 @@ Statuswerte: `UNBEKANNT`, `KANDIDAT`, `IN PRUEFUNG`, `BESTAETIGT`, `VERWORFEN`.
 
 Die Bestaetigung ist nur moeglich, wenn:
 
-- mindestens **3 unabhaengige Assistenten-Laeufe** mit derselben Bitdefinition vorliegen,
+- mindestens **3 unabhaengige Pruefablaeufe-Laeufe** mit derselben Bitdefinition vorliegen,
 - mindestens **2 unterschiedliche Aktionsbezeichnungen** vorkommen (z. B. EIN/AUS),
 - keine DEMO-Evidenz enthalten ist,
 - die Checkliste zur praktischen Gegenprobe bestaetigt wird,

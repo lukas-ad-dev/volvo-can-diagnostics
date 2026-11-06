@@ -58,7 +58,7 @@ Das Skript markiert neue/verschwundene IDs, geaenderte Bytes/Bits, Variabilitaet
 
 ## Lokale Signalerkennung
 
-Zusaetzlich zu den Messdateien gibt es eine lokale Windows-Oberflaeche (`SIGNALERKENNUNG.md`, Start mit `start_diagnose.bat`). Sie fuehrt durch den A/B-Assistenten:
+Zusaetzlich zu den Messdateien gibt es eine lokale Windows-Oberflaeche (`SIGNALERKENNUNG.md`, Start mit `start_diagnose.bat`). Sie fuehrt durch den A/B-Pruefablaeufe:
 
 1. 10 s Grundzustand,
 2. Aktion markieren,

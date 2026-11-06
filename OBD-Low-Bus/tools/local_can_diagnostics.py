@@ -3,7 +3,7 @@
 
 Startet eine nur auf 127.0.0.1 gebundene Weboberflaeche, liest den
 USB-CDC-NDJSON-Stream des ESP32 und bietet Signalkacheln, Signal-Editor,
-Assistent, Live-Test, Zeitlinie und Exporte. Es wird ausschliesslich
+Pruefablauf, Live-Test, Zeitlinie und Exporte. Es wird ausschliesslich
 gelesen; es gibt keinen CAN-Sendezpfad.
 """
 from __future__ import annotations
@@ -423,7 +423,7 @@ class DiagnosticsApp:
     def assistant_start(self, action_label: str = "") -> dict:
         with self.lock:
             if self.assistant.phase not in {"idle", "evaluated"}:
-                raise ValueError("Assistent laeuft bereits; bitte zuerst zuruecksetzen")
+                raise ValueError("Pruefablauf laeuft bereits; bitte zuerst zuruecksetzen")
             self.assistant.start(action_label)
             self.record_event("assistant_start", action_label=action_label, run_id=self.assistant.run_id)
             return self.assistant.status()
@@ -451,7 +451,7 @@ class DiagnosticsApp:
     def assistant_bind(self, signal_id: str, candidate_index: int) -> dict:
         with self.lock:
             if self.assistant.phase != "evaluated":
-                raise ValueError("Zuerst den Assistenten auswerten")
+                raise ValueError("Zuerst den Pruefablauf auswerten")
             if not 0 <= candidate_index < len(self.assistant.candidates):
                 raise ValueError("Kandidat ungueltig")
             if not self.assistant.action_label:

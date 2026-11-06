@@ -408,9 +408,9 @@ function renderTimeline() {
       case "connection": message = event.message || "USB-Verbindung"; break;
       case "measurement_start": message = "Messung gestartet: " + event.name; break;
       case "measurement_stop": message = "Messung gestoppt: " + event.name; break;
-      case "assistant_start": message = "Assistent gestartet: " + (event.action_label || "-"); break;
+      case "assistant_start": message = "Pruefablauf gestartet: " + (event.action_label || "-"); break;
       case "assistant_action": message = "Aktion markiert: " + (event.action_label || "-"); break;
-      case "assistant_evaluate": message = "Assistent ausgewertet: " + (event.candidates ?? 0) + " Kandidaten"; break;
+      case "assistant_evaluate": message = "Pruefablauf ausgewertet: " + (event.candidates ?? 0) + " Kandidaten"; break;
       case "assistant_bind": message = "Kandidat gebunden: " + event.signal_id; break;
       case "measurement": message = event.message || ""; break;
       case "demo_action": message = "DEMO-Aktion: " + event.value; break;
@@ -438,7 +438,7 @@ async function pollEvents() {
   } catch (_) { /* Status zeigt Fehler */ }
 }
 
-/* ---------- Assistent ---------- */
+/* ---------- Pruefablauf ---------- */
 
 async function loadScenarios() {
   try {

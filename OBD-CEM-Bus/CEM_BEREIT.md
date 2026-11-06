@@ -1,4 +1,4 @@
-# CEM-CAN – Bereitstellung & Sicherung (2026-11-06)
+# CEM-CAN - Bereitstellung & Sicherung (2026-11-06)
 
 ## Verbindlicher Sicherheitsstatus
 
@@ -116,4 +116,4 @@ Siehe `../backups/README.md` (Volvo-Root).
 6. Ursache der früheren Fahrzeugstörung per Oszilloskop eingrenzen (TWAI-Init/TXD, Terminierung, Abgriff).
 7. START ist für den read-only Live-Test freigegeben (`kAllowCanStart=true`); Hardware-Passivität weiterhin offen.
 8. CSV-Logger des lokalen Servers reparieren; bis dahin vollständige RAW-Daten bzw. USB-Logger nutzen.
-9. Assistenten-Zwei-Zyklus-Test mit einer sicher schaltbaren Aktion wiederholen; der letzte „standlicht“-Lauf hatte 0 stabile Bitwechsel.
+9. Pruefablauf-Test mit einer sicher schaltbaren Aktion wiederholen; der letzte „standlicht“-Lauf hatte 0 stabile Bitwechsel.

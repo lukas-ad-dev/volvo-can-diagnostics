@@ -2,7 +2,7 @@
 """Signal-Engine fuer die lokale Volvo-CAN-Diagnose.
 
 Reine Python-Logik ohne CAN-Sendezugriff. Definiert Signalkacheln,
-bewertet Bit-/Byte-/Mehrbyte-Signale, fuehrt den A/B-Assistenten aus und
+bewertet Bit-/Byte-/Mehrbyte-Signale, fuehrt den A/B-Pruefablauf aus und
 verwaltet den Vertrauensstatus inklusive Bestaetigungsschutz.
 """
 from __future__ import annotations
@@ -327,7 +327,7 @@ class SignalStore:
         if len(candidate_keys) > 1:
             raise ValueError("Die Evidenz bezieht sich auf unterschiedliche Kandidaten")
         if len(run_ids) < 3:
-            raise ValueError("Bestaetigung braucht mindestens 3 unabhaengige Assistenten-Laeufe")
+            raise ValueError("Bestaetigung braucht mindestens 3 unabhaengige Pruefablaeufe")
         if len(action_labels) < 2:
             raise ValueError("Bestaetigung braucht mindestens zwei unterschiedliche Aktionen (z. B. EIN/AUS)")
         if not checklist:
@@ -359,7 +359,7 @@ class SignalStore:
                 "bit_mask": 1 << int(candidate["bit"]),
                 "compare_value": 1,
                 "invert": False,
-                "source": "assistant",
+                "source": "pruefablauf",
                 "status": "candidate",
                 "confirmed_at": None,
                 "confirmed_note": "",

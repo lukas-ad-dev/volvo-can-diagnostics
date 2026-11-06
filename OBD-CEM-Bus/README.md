@@ -1,4 +1,4 @@
-# Volvo CAN Control – OBD-CEM-Bus
+# Volvo CAN Control - OBD-CEM-Bus
 
 Passive CAN-Analyse des internen CEM-CAN-Busses eines Volvo V90 T8
 (SPA-Plattform, Modelljahr 2021) mit dem Waveshare Industrial
@@ -22,11 +22,11 @@ Dummy-Pin.
 - `0x030`/`0x035` sind Zwillingsnachrichten; Byte 0 ist Zähler/Integrität.
 - Abblendlicht: `86 03` (praktisch bestätigt)
 - Fernlicht manuell: `92 2B`; Automatik/Nacht: `92 6B`; weitere Basis: `92 4B`
-- Fernlicht generisch: Byte 2–3, Maske `0x9008` (Byte 2 Bit 7+4, Byte 3 Bit 3)
+- Fernlicht generisch: Byte 2-3, Maske `0x9008` (Byte 2 Bit 7+4, Byte 3 Bit 3)
 - Lichthupe: `7C69` (bisher bei Abblendlicht AUS)
 - Wegbeleuchtung/Coming Home: `7C60` (Kandidat; Trigger nicht gefunden)
 - Blinker links/rechts: `0x040` Byte 5 Bit 4/5; Warnblinker beide Bits
-- Blinkstatus: `0x050` Byte 4–7 `01 90 01 90`; Warnblinker `01 F4 01 2C`
+- Blinkstatus: `0x050` Byte 4-7 `01 90 01 90`; Warnblinker `01 F4 01 2C`
 
 Nicht auf diesem CEM-11-Bit-Bus gefunden: Bremspedal und Fahrstufe N/R. Diese
 Referenzen liegen im OBD-Low-Bus-Bereich (`0x1FFF...`).
@@ -34,7 +34,7 @@ Referenzen liegen im OBD-Low-Bus-Bereich (`0x1FFF...`).
 ## Oberfläche
 
 - Live-CAN-Monitor mit ID-Filter und Ausblenden von Dauersignalen
-- Assistent mit einem Aktionszyklus
+- Pruefablauf mit einem Aktionszyklus
 - Bit-Test bis 60 ändernde Bits
 - Signalanalyse mit A/B-Vergleich, Bitmatrix, Zeitdiagramm und Export
 - Kompakte Signal-Karten, Details per Klick, Archiv für Altkandidaten
@@ -50,14 +50,14 @@ Referenzen liegen im OBD-Low-Bus-Bereich (`0x1FFF...`).
 
 ## Struktur
 
-- `firmware/` – PlatformIO-Firmware
-- `web/` – Firmware-Weboberfläche
-- `local_web/` – lokale Windows-Diagnoseoberfläche
-- `tools/` – USB-Logger, lokaler Server, Signal-Engine, Checks
-- `config/` – CEM-Signaldefinitionen
-- `decoder/` – Referenzdecoder, unverifiziert
-- `tests/` – native und Python-Tests
-- `docs/` – Hardware, Sicherheit, Architektur und CEM-Test
+- `firmware/` - PlatformIO-Firmware
+- `web/` - Firmware-Weboberfläche
+- `local_web/` - lokale Windows-Diagnoseoberfläche
+- `tools/` - USB-Logger, lokaler Server, Signal-Engine, Checks
+- `config/` - CEM-Signaldefinitionen
+- `decoder/` - Referenzdecoder, unverifiziert
+- `tests/` - native und Python-Tests
+- `docs/` - Hardware, Sicherheit, Architektur und CEM-Test
 
 ## Bauen und testen
 

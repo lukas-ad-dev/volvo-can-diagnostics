@@ -1,120 +1,105 @@
-# Projektverlauf – Volvo CAN Diagnostics
+# Projektverlauf
 
 ## Fahrzeug
 
-- **Modell:** Volvo V90
-- **Variante:** T8
-- **Plattform:** SPA
-- **Modelljahr:** 2021
+Ich untersuche einen Volvo V90 T8, Baujahr 2021, auf der SPA-Plattform. Die
+Analyse läuft über zwei Wege: den OBD-Diagnosebus an Pin 6/14 und den internen
+CEM-Bus hinter dem Fahrerfach.
 
 ## Ziel
 
-Passive Analyse von zwei CAN-Bussen im eigenen Fahrzeug:
+Ich möchte die CAN-Nachrichten dieser beiden Busse passiv lesen und die
+Zusammenhänge verstehen. Im Mittelpunkt stehen:
 
-1. **OBD-Diagnosebus** (OBD2 Pin 6/14) – älterer Analysepfad.
-2. **Interner CEM-CAN** – neuerer, passiver Abgriff hinter dem Fahrerfach.
+- Rückwärtsgang und Geschwindigkeit
+- Abblendlicht, Fernlicht, Standlicht und Wegbeleuchtung
+- Blinker links/rechts und Warnblinker
+- Parkkamera und Rangiermodus
+- Ver- und Entriegelung, Fahrertür
+- Zündung, Komfort/Radio und Busruhe
 
-Gesuchte Signale (zunächst alle **UNBEKANNT**):
-
-- Rückwärtsgang, Fahrgeschwindigkeit
-- Abblendlicht, Fernlicht, Standlicht
-- Parkkamera/Rangiermodus
-- Ver-/Entriegelung, Fahrertür
-- Zündung, Komfort/Radio, Fahrzeug wach/Ruhezustand
-
-**Ausdrücklich nicht Ziel:** CAN senden, Diagnoseanfragen, Gateway-Manipulation,
-Steuergeräte codieren oder Fahrzeugfunktionen steuern. Das Projekt ist
-**read-only**.
+Ich sende nichts auf den Bus, stelle keine Diagnoseanfragen und ändere keine
+Steuergeräte. Das Projekt ist ausschließlich lesend.
 
 ## Hardware
 
-- Waveshare **ESP32-S3-RS485-CAN**
-- Isolierter CAN-Transceiver TJA1051, Digitalisolator π163E31
-- CAN TX = GPIO15, CAN RX = GPIO16
-- Sicherheitsmaßnahme: echter TXD GPIO15 bleibt `INPUT_PULLUP`;
-  TWAI-TX liegt auf Dummy-GPIO48
-- 120-Ω-Terminierung am Board: Standard NC; am realen Board prüfen
-- USB-CDC zur Diagnose, optional WLAN-AP der Firmware
+- Waveshare ESP32-S3-RS485-CAN
+- Isolierter Transceiver TJA1051 und Digitalisolator
+- CAN TX auf GPIO15, RX auf GPIO16
+- Echter TXD bleibt `INPUT_PULLUP`, TWAI-TX liegt auf Dummy-GPIO48
+- 120-Ohm-Terminierung: Standard aus, am realen Board noch prüfen
+- USB-CDC zum Laptop, WLAN-AP der Firmware optional
 
 ## Verlauf
 
-### 2026-11-04 – OBD-Low-Bus
+### 04.11.2026: OBD-Low-Bus
 
-- Erste passive Hardwaretests am OBD2-Port.
-- USB-Logger, lokale Weboberfläche, CSV-Aufzeichnung.
-- Erste Kandidaten:
-  - Fahrstufe P/R/N/D: `0x1FFF00A0`, Byte 6, Bits 0–1
-  - Fußbremse: `0x1FFF0200`, Byte 4, Bit 1
-  - Rückfahrkamera: `0x1FFF0144`, Byte 2, Bit 3 (aktiv bei 0)
-- Abblendlicht, Fernlicht, Standlicht, Parkbremse und manuelle Kamera waren
-  auf dem beobachteten OBD-Diagnosebus **nicht stabil** sichtbar.
-- Diese IDs sind Referenz/Kandidaten, **keine bestätigten CEM-Decoder**.
+Die ersten passiven Tests liefen am OBD2-Port. Ich habe einen USB-Logger,
+eine lokale Weboberfläche und die CSV-Aufzeichnung aufgebaut. Als Kandidaten
+sind mir damals aufgefallen:
 
-### 2026-11-05 – CEM-CAN und Sicherheitsvorfall
+- Fahrstufe P/R/N/D: `0x1FFF00A0`, Byte 6, Bits 0-1
+- Fußbremse: `0x1FFF0200`, Byte 4, Bit 1
+- Rückfahrkamera: `0x1FFF0144`, Byte 2, Bit 3, aktiv bei 0
 
-- Aufbau des CEM-Projekts und Analyse der internen Busdaten.
-- Ein früherer automatischer Bitratenscan mit wiederholten
-  TWAI-Initialisierungen führte zu Fahrzeugstörungen (Blinkleuchten/
-  Beleuchtung). Nach Trennen der USB-Versorgung verschwanden sie.
-- Konsequenz: keine Scans mehr, fester 500-kbit/s-Testbetrieb, nur
-  LISTEN_ONLY, expliziter START, kein Auto-Neuversuch, Dummy-TX-Schutz.
-- Auswertung der 500-kbit/s-Logs: **159.617 Frames**, 24 Standard-IDs,
-  keine Demo-/Parse-Fehler; 8.735 Frames/10 s plausibel bestätigt.
-- Firmware auf 500 kbit/s festgelegt; Errata-Workaround
-  `CONFIG_TWAI_ERRATA_FIX_LISTEN_ONLY_DOM=1` aktiv.
+Abblendlicht, Fernlicht, Standlicht, Parkbremse und die manuelle Kamera waren
+auf diesem Bus nicht stabil zu sehen. Die drei Einträge sind Referenzen und
+keine bestätigten CEM-Signale.
 
-### 2026-11-06 – Live-Test und Assistent
+### 05.11.2026: CEM-Bus und Sicherheit
 
-- Autorisierter read-only Live-Test: **289.647 Frames**, **24 IDs**,
-  **0 CAN-Fehler**, 33 USB-Queue-Drops, TWAI **RUNNING**.
-- Danach sauberer STOP; keine CAN-Sendeaktion.
-- Assistent mit einem Aktionszyklus; Kandidaten zeigen live EIN/AUS,
-  Zielauswahl pro Kandidat wird beim Binden uebernommen.
-- Neue **Bit-Test**-Seite: bis zu 60 Bits, die sich waehrend des Testbetriebs
-  aendern, mit Live-Anzeige und freier Zuordnung.
-- Letzter Abblendlicht-Test im alten Zwei-Zyklus-Modus: 0 Kandidaten, weil
-  kein Bit stabil wechselte. Der Assistent wurde wieder auf einen Zyklus
-  zurueckgestellt.
-- Repository mit Code, Doku, Hardware- und CAN-Bus-Infos erstellt.
+Beim Aufbau des CEM-Projekts habe ich den internen Bus analysiert. Ein früherer
+automatischer Bitratenscan mit mehreren TWAI-Initialisierungen hat am Fahrzeug
+Blinkleuchten und Beleuchtung gestört. Nach dem Trennen der USB-Versorgung war
+wieder Ruhe.
 
-## Bisherige Ergebnisse
+Seitdem gilt: kein Scan, fester Testbetrieb mit 500 kbit/s, nur `LISTEN_ONLY`,
+expliziter Start, kein Auto-Neuversuch und Dummy-TX. Die 500 kbit/s wurden
+später mit echten Frames bestätigt. Im 500-kbit/s-Log waren 159.617 Frames und
+24 Standard-IDs, ohne Demo- oder Parse-Fehler. 8.735 Frames in 10 Sekunden
+passen zur Bitrate.
+
+### 06.11.2026: Live-Tests und Auswertung
+
+Am Abend habe ich mehrere live aufgezeichnete Tests gefahren, insgesamt
+mehrere Millionen Frames. Der Empfang lief normal ohne Busfehler. Fehler
+kamen erst auf, als der Bus während der Wegbeleuchtungs-Tests schlafen ging
+und wieder aufwachte. CAN wurde dabei nie gesendet.
+
+Für die Lichtzustände auf `0x030`/`0x035` habe ich folgende Werte gefunden:
+`86 03` für Abblendlicht, `92 2B` für manuelles Fernlicht, `92 6B` für
+Fernlicht in der Automatik/Nacht und `7C69` für die Lichthupe bei
+ausgeschaltetem Abblendlicht. `7C60` scheint zur Wegbeleuchtung zu gehören,
+der Einschaltbefehl fehlt aber noch.
+
+Für die Blinker gilt: `0x040` Byte 5 Bit 4 ist links, Bit 5 ist rechts. Beim
+Warnblinker sind beide Bits aktiv. Der normale Blinkstatus liegt in `0x050`
+Byte 4-7 bei `01 90 01 90`; beim Warnblinker sind es `01 F4 01 2C`.
+
+Bremspedal und Fahrstufe N/R konnte ich auf dem CEM-11-Bit-Bus nicht finden.
+Die bekannten IDs dafür liegen auf dem OBD-Low-Bus.
+
+## Aktueller Stand
 
 | Bereich | Ergebnis |
 |---|---|
-| CEM-Bitrate | 500 kbit/s durch echte Frames plausibel bestätigt |
-| CEM-Frames | 159.617 (Loganalyse), 289.647 (Live-Lauf) |
+| CEM-Bitrate | 500 kbit/s, mit echten Frames bestätigt |
 | CEM-IDs | 24 Standard-IDs, keine Extended-IDs |
-| CEM-Fehler | 0 CAN-/Bus-/TX-/RX-Fehler im Live-Lauf |
-| OBD-Low-Signale | Fahrstufe, Fußbremse, Rückfahrkamera als Kandidaten |
-| CEM-Decoder | noch keine bestätigten CEM-Signale |
-| Assistent | ein Zyklus, Live-Bit-Anzeige, Bind-Auswahl |
-| Hardware-Passivität | noch nicht messtechnisch vollständig nachgewiesen |
+| CEM-Fehler | im normalen Empfang keine Busfehler |
+| Licht | Abblendlicht und Fernlicht mehrfach bestätigt |
+| Blinker | links, rechts und Warnblinker getrennt |
+| Wegbeleuchtung | Zustand `7C60` sichtbar, Trigger noch offen |
+| Bremse / Fahrstufe | auf diesem Bus nicht sichtbar |
+| Hardware | Passivität noch nicht vollständig gemessen |
 
-## Offene Fragen
+## Offene Punkte
 
-Diese Angaben fehlen noch und können vom Fahrzeughalter ergänzt werden:
+1. Wo genau wird die Wegbeleuchtung eingeschaltet, und gibt es dafür einen
+   Befehl auf dem Bus?
+2. Kommen Bremspedal und Fahrstufe nur auf dem OBD-Low-Bus?
+3. Stimmen die 500 kbit/s auch bei einer zweiten Gegenmessung?
+4. Wie sind Board-Revision, Jumper und tatsächlicher TXD-Pfad?
+5. Welche Zustände sollen als Nächstes dokumentiert werden?
 
-1. Genaue Ausstattung/Antriebsbezeichnung (z. B. T8 Recharge) und ob weitere
-   Steuergeräte bekannt sind.
-2. Genaue Einbauposition und Kabelfarben des CEM-Abgriffs.
-3. Board-Revision und tatsächliche Jumperstellung der 120-Ω-Terminierung.
-4. Oszilloskopmessung: GPIO15/TXD, U9-Ausgang und CAN-H/L bei Boot/START/STOP.
-5. Ob 500 kbit/s exakt dem CEM-Bus entsprechen (zweite Gegenmessung).
-6. Welche Signale Priorität haben (Rückwärtsgang, Licht, Ambient, Kamera).
-
-### 2026-11-06 – Abendtests und Signalzustände
-
-- Live-Tests mit mehreren Millionen Frames; im Normalbetrieb 0 Busfehler.
-- `0x030`/`0x035` als Zwillingsnachrichten bestätigt (Bytes 1–7 identisch,
-  Byte 0 XOR 0x65). Byte 0 ist Zähler/Integrität.
-- Abblendlicht praktisch bestätigt: `86 03`.
-- Fernlicht praktisch bestätigt: `92 2B` manuell, `92 6B` Automatik/Nacht,
-  weitere Basis `92 4B`; generische Maske `0x9008`.
-- Lichthupe: `7C69`, bisher bei Abblendlicht AUS.
-- Blinker: `0x040` Byte 5 Bit 4 links, Bit 5 rechts, beide beim Warnblinker;
-  `0x050` Byte 4–7 `01900190` normal, `01F4012C` Warnblinker.
-- Wegbeleuchtung bleibt als `7C60` sichtbar; der Einschaltbefehl wurde nicht
-  gefunden. `0x531`/`0x532` erscheinen als Wake-/NM-Frames.
-- Bremspedal und Fahrstufe N/R waren auf dem CEM-11-Bit-Bus nicht sichtbar.
-- GUI: kompakte Signal-Karten, Detailansicht per Klick, Archiv für alte
-  Kandidaten, Messungsverwaltung und A/B-Signalanalyse.
+Die Rohdaten bleiben lokal. Im Repository stehen nur die ausgewerteten
+Ergebnisse und der Code.

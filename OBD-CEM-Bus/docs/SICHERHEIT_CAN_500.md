@@ -1,4 +1,4 @@
-# Sicherheitsstatus CEM-CAN – fester 500-kbit/s-Listen-Only-Betrieb
+# Sicherheitsstatus CEM-CAN - fester 500-kbit/s-Listen-Only-Betrieb
 
 Stand: 2026-11-06
 
@@ -27,7 +27,7 @@ Stand: 2026-11-06
 ## Auswertung der 500-kbit/s-Logs
 
 Quelle: `messungen/session_20261105-210307_raw.jsonl` und `.csv`
-(Test vom 05.11.2026, 20:19:48–20:23:01 UTC).
+(Test vom 05.11.2026, 20:19:48-20:23:01 UTC).
 
 | Pruefung | Ergebnis |
 |---|---|
@@ -39,7 +39,7 @@ Quelle: `messungen/session_20261105-210307_raw.jsonl` und `.csv`
 | Datenlaenge/Polsterung | alle DLC<8-Frames nur mit Null-Padding; keine Korruption |
 | Sequenz | Segment 0: 130.090 Frames, lueckenlos seq 1..130.090; Segment 2: 29.519 Frames, 34 USB-Drops |
 | Rate | ca. **870 Frames/s**; max. 10 s: **8.728** (ESP-Timestamp) bzw. **8.856** (Host-Zeit) |
-| 8.735 Frames/10 s | **plausibel** (Fenstergrenze/Zeitbasis; innerhalb 8.728–8.856) |
+| 8.735 Frames/10 s | **plausibel** (Fenstergrenze/Zeitbasis; innerhalb 8.728-8.856) |
 | Top-IDs | 0x25, 0x27, 0x2A, 0x30, 0x33, 0x35, 0x3A, 0x40, 0x50, 0x85, 0x130, 0x57F |
 | Fehler | keine `BUS_ERROR`/`BUS_OFF`-Meldungen in den Logs; `txerr=0`, `dropped=0` im Hauptsegment |
 
@@ -92,7 +92,7 @@ noch aus.
   - S (Pin 8) liegt ueber R18 0R auf SGND: **Normal Mode, kein Silent/Standby**.
   - TXD hat laut NXP-Datenblatt einen internen Pull-up; HIGH = rezessiv.
 - **U9: π163E31** Digitalisolator, Fail-Safe-Ausgang **HIGH**.
-  - R35–R39 sind laut Schaltplan **NC**; offene Eingaenge ergeben HIGH.
+  - R35-R39 sind laut Schaltplan **NC**; offene Eingaenge ergeben HIGH.
   - TXD2' ist damit bei hochohmigem/hochgezogenem GPIO15 HIGH.
 - **Boot:** GPIO15 hochohmig + Isolator-Fail-Safe HIGH + TJA1051-TXD-Pull-up
   ⇒ rezessiv. GPIO15 ist kein Strapping-Pin; der Pegel waehrend Reset/Bootloader

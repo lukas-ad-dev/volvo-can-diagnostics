@@ -23,7 +23,7 @@
       "factor": 1.0,
       "offset": 0.0,
       "notes": "UNVERIFIZIERT AUF CEM - Referenz von OBD-Low-Bus. Gangcode Byte6 Bits0-1, R=0x39. Manuell praktisch geprueft am 04.11.2026, noch als Kandidat gefuehrt.",
-      "source": "assistant",
+      "source": "pruefablauf",
       "measurements": [],
       "evidence": [],
       "confirmed_at": null,

@@ -122,7 +122,7 @@ usb_can_logger.py  (Parse, CSV, Event-Log)
         ▼
 local_can_diagnostics.py  (ThreadingHTTPServer 127.0.0.1:8765)
         │
-        ├── signal_engine.py   (LEDs, Editor, A/B-Assistent, Bestaetigung)
+        ├── signal_engine.py   (LEDs, Editor, A/B-Pruefablauf, Bestaetigung)
         ├── config/signals.json
         ├── config/confirmed_signals.json
         ├── config/reference_ids.json
@@ -134,5 +134,5 @@ local_can_diagnostics.py  (ThreadingHTTPServer 127.0.0.1:8765)
 - **Nur lesend:** Die Python-Anwendung oeffnet den seriellen Port ausschliesslich lesend; es gibt keinen CAN-Sendezpfad.
 - **Demo exklusiv:** `--demo` verwendet eine synthetische Quelle und einen getrennten Ordner `messungen/demo`. DEMO-Frames werden im Serialmodus ignoriert, damit echte und synthetische Daten nicht vermischt werden.
 - **Rohdaten:** Jede Session schreibt Session-CSV, Roh-JSONL (Frames + Meta), Events-JSONL, Event-Log und Meta-JSON. GUI-Filter beeinflussen die Rohaufzeichnung nicht.
-- **Status:** `UNBEKANNT`, `KANDIDAT`, `IN PRUEFUNG`, `BESTAETIGT`, `VERWORFEN`; Bestaetigung nur mit mindestens drei unabhaengigen Assistenten-Laeufen, mindestens zwei Aktionsbezeichnungen, Checkliste und Notiz; DEMO-Evidenz ist gesperrt.
+- **Status:** `UNBEKANNT`, `KANDIDAT`, `IN PRUEFUNG`, `BESTAETIGT`, `VERWORFEN`; Bestaetigung nur mit mindestens drei unabhaengigen Pruefablaeufen, mindestens zwei Aktionsbezeichnungen, Checkliste und Notiz; DEMO-Evidenz ist gesperrt.
 - **Fehlende Frames:** Die Oberflaeche weist auf Gateway, OBD-Anschlussstelle, Bitrate und CAN H/L hin und behauptet keinen automatischen Firmwarefehler.

@@ -10,8 +10,8 @@
 - [x] Ringpuffer im PSRAM, CSV-/JSON-Export
 - [x] Python-CSV-Collector fuer Windows (TCP) und USB-CDC-Logger
 - [x] Benannte Messszenarien, Session-CSV, Event-Log und Messungsvergleich
-- [x] Lokale Windows-Signalerkennung auf 127.0.0.1:8765 mit Signalkacheln, Editor und Assistent
-- [x] Bestaetigungsschutz mit mindestens drei dokumentierten Assistenten-Laeufen
+- [x] Lokale Windows-Signalerkennung auf 127.0.0.1:8765 mit Signalkacheln, Editor und Pruefablauf
+- [x] Bestaetigungsschutz mit mindestens drei dokumentierten Pruefablaeufen
 - [x] Quellen-/Plattformtrennung in CAN_REFERENZEN.md und reference_ids.json
 - [x] Demo-Modus mit eindeutiger DEMO-Kennzeichnung
 - [x] GPIO1/GPIO2 vorbereitet und hart gesperrt
