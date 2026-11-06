@@ -87,8 +87,7 @@ angesprochen.
 
 ## Lizenz
 
-Noch keine Lizenz gesetzt. Das Repository ist öffentlich lesbar; eine
-MIT-Lizenz kann später ergänzt werden.
+**MIT-Lizenz** – siehe [`LICENSE`](LICENSE). Copyright (c) 2026 **lukas-ad**.
 
 ## Hinweis
 
