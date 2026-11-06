@@ -69,8 +69,8 @@ Ambientebeleuchtung:
 - `config/` - CEM-Signaldefinitionen (Referenzen, Status unbekannt)
 - `decoder/` - Referenzdecoder, ausdruecklich UNVERIFIZIERT AUF CEM
 - `tests/` - native und Python-Tests
-- `docs/` - CEM-Hardware, Signalziele, Architektur, Testbericht
-- `messungen/` - noch leer; OBD-Referenzmessungen liegen im Low-Projekt
+- `docs/` - CEM-Hardware, Signalziele, Architektur, Sicherheit und Verlauf
+- `messungen/` - lokale Messdateien
 
 ## Bauen und testen
 
