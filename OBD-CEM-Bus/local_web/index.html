@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Volvo CAN Signalerkennung</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">VCC</div>
+      <div>
+        <h1>Volvo CAN Signalerkennung</h1>
+        <p>Lokale Diagnose · nur lesend · fester Testbetrieb 500 kbit/s · V90 T8 SPA 2021</p>
+      </div>
+    </div>
+    <div class="top-status">
+      <span id="profile-pill" class="pill">-</span>
+      <span id="source-pill" class="pill">-</span>
+      <span id="connection-pill" class="pill">-</span>
+      <span id="can-pill" class="pill">CAN: -</span>
+      <span id="bitrate-pill" class="pill">Bitrate: -</span>
+      <span id="twai-pill" class="pill">TWAI: -</span>
+      <span id="start-pill" class="pill bad">START: GESPERRT</span>
+      <span id="demo-pill" class="pill demo hidden">DEMO</span>
+    </div>
+  </header>
+
+  <div id="safety-banner" class="banner warning">
+    NUR LESEN: ausschliesslich passiv empfangen. Keine CAN-Frames senden. Fester Testbetrieb 500 kbit/s; START ist bis zur Hardwarefreigabe gesperrt. Kein Bitratenscan, kein Serverstart ohne Freigabe.
+  </div>
+
+  <div id="demo-banner" class="banner demo hidden">
+    DEMO-MODUS: Alle Frames sind synthetisch. Bestaetigungen sind gesperrt; keine echten Fahrzeugdaten.
+    <button id="demo-toggle" class="button small" type="button">Demo-Aktion umschalten</button>
+  </div>
+  <div id="hint-banner" class="banner warning hidden"></div>
+
+  <section class="sessionbar">
+    <div class="session-meta">
+      <span>Session: <strong id="session-name">-</strong></span>
+      <span>Messung: <strong id="measurement-name">-</strong></span>
+      <span>Frames: <strong id="frame-count">0</strong></span>
+      <span>Letzter Frame: <strong id="last-frame">-</strong></span>
+      <span>CAN: <strong id="can-status-text">-</strong></span>
+      <span>Alerts: <strong id="can-alerts">-</strong></span>
+      <span>Status: <strong id="fw-updated">-</strong></span>
+    </div>
+    <div class="session-actions">
+      <select id="measurement-select" aria-label="Messszenario"></select>
+      <input id="measurement-custom" type="text" placeholder="oder eigener Name" autocomplete="off">
+      <button id="measurement-start" class="button" type="button">Messung starten</button>
+      <button id="measurement-stop" class="button secondary" type="button">Messung stoppen</button>
+      <input id="event-label" type="text" placeholder="Ereignis markieren, z. B. Rueckwaertsgang EIN" autocomplete="off">
+      <button id="event-mark" class="button secondary" type="button">Ereignis</button>
+      <button id="can-start" class="button" type="button">CAN START (read-only)</button>
+      <button id="can-stop" class="button secondary" type="button">CAN STOP</button>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="signals">Signale</button>
+    <button class="tab" data-tab="monitor">Live-CAN-Monitor</button>
+    <button class="tab" data-tab="assistant">Assistent</button>
+    <button class="tab" data-tab="live">Live-Test &amp; Zeitlinie</button>
+    <button class="tab" data-tab="editor">Signal-Editor</button>
+    <button class="tab" data-tab="references">Referenzen</button>
+    <button class="tab" data-tab="export">Export &amp; Status</button>
+  </nav>
+
+  <main>
+    <section id="tab-signals" class="tab-panel active">
+      <div class="legend">
+        <span><i class="led green"></i> EIN / aktiv</span>
+        <span><i class="led gray"></i> AUS / inaktiv</span>
+        <span><i class="led yellow"></i> UNBEKANNT / Kandidat</span>
+        <span><i class="led red"></i> ungueltig / veraltet / verloren</span>
+      </div>
+      <div id="signal-grid" class="signal-grid"></div>
+      <p class="muted note">
+        Solange keine praktische, mehrfach wiederholte Pruefung vorliegt, bleibt ein Signal UNBEKANNT (gelb).
+        Die Rohwerte dienen nur der Kandidatensuche. Keine automatische Bedeutung.
+      </p>
+    </section>
+
+    <section id="tab-monitor" class="tab-panel">
+      <div class="panel">
+        <h2>Live-CAN-Monitor <span id="monitor-demo-badge" class="badge demo hidden">DEMO</span></h2>
+        <p class="muted">
+          Rohdaten ausschliesslich lesend. Diagnosemeldungen des ESP werden getrennt in der Ereignis-Zeitlinie
+          und im Event-Log gefuehrt. Die CSV-Aufzeichnung enthaelt alle Frames unabhaengig von den Anzeigefiltern.
+        </p>
+        <div id="monitor-stats" class="monitor-stats"></div>
+        <div class="toolbar">
+          <input id="monitor-filter-id" type="text" placeholder="CAN-ID filtern, z. B. 1A0" autocomplete="off">
+          <input id="monitor-filter-data" type="text" placeholder="Datenbytes filtern, z. B. 01 FF" autocomplete="off">
+          <select id="monitor-filter-type" aria-label="Frame-Typ">
+            <option value="all">STD + EXT</option>
+            <option value="std">nur Standard</option>
+            <option value="ext">nur Extended</option>
+          </select>
+          <button id="monitor-pause" class="button secondary" type="button">Pause</button>
+          <button id="monitor-clear" class="button secondary" type="button">Leeren</button>
+        </div>
+        <div class="toolbar">
+          <input id="monitor-measurement" type="text" placeholder="Messungsname (optional)" autocomplete="off">
+          <button id="monitor-record-start" class="button" type="button">Aufzeichnung starten</button>
+          <button id="monitor-record-stop" class="button secondary" type="button">Aufzeichnung stoppen</button>
+          <a class="button secondary" href="/api/export/session?format=csv">Session-CSV</a>
+          <a class="button secondary" href="/api/export/session?format=jsonl">Roh-JSONL</a>
+          <button id="monitor-files" class="button secondary" type="button">Messdateien</button>
+        </div>
+        <div class="table-wrap monitor-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Zeit</th><th>Seq</th><th>CAN-ID</th><th>Typ</th><th>DLC</th><th>Daten</th><th>Hz</th><th>DEMO</th></tr></thead>
+            <tbody id="monitor-frames"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-assistant" class="tab-panel">
+      <div class="panel">
+        <h2>Messassistent</h2>
+        <p class="muted">
+          A: 10 s Grundzustand. B: Aktion ausfuehren und markieren. C: 10 s Aktion aufnehmen.
+          D: auswerten. E: Kandidaten pruefen. F: Kandidat an eine Kachel binden.
+          G/H: Gegenaktion und mindestens 3 unabhaengige Wiederholungen.
+        </p>
+        <div class="toolbar">
+          <input id="assistant-action" type="text" placeholder="Aktion, z. B. Rueckwaertsgang EIN" autocomplete="off">
+          <button id="assistant-start" class="button" type="button">Grundzustand starten</button>
+          <button id="assistant-mark" class="button secondary" type="button">Aktion markieren</button>
+          <button id="assistant-evaluate" class="button secondary" type="button">Auswerten</button>
+          <button id="assistant-reset" class="button secondary" type="button">Zuruecksetzen</button>
+        </div>
+        <div id="assistant-status" class="assistant-status">Bereit.</div>
+        <div id="assistant-candidates"></div>
+      </div>
+    </section>
+
+    <section id="tab-live" class="tab-panel">
+      <div class="grid two">
+        <div class="panel">
+          <h2>Live-Test</h2>
+          <label class="field">Signal auswaehlen
+            <select id="live-signal"></select>
+          </label>
+          <div id="live-card" class="live-card muted">Noch kein Signal ausgewaehlt.</div>
+          <div class="toolbar">
+            <button id="live-on" class="button secondary" type="button">Aktion EIN markieren</button>
+            <button id="live-off" class="button secondary" type="button">Aktion AUS markieren</button>
+          </div>
+          <p class="muted small">
+            Die Markierungen werden als Ereignisse gespeichert. Der Assistent und die Bestaetigung
+            brauchen unabhaengige Wiederholungen; eine einzelne Beobachtung reicht nicht.
+          </p>
+        </div>
+        <div class="panel">
+          <h2>Ereignis-Zeitleiste</h2>
+          <div id="timeline" class="timeline"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-editor" class="tab-panel">
+      <div class="panel">
+        <h2>Signal-Editor</h2>
+        <p class="muted">
+          Kein Senden: Der Editor aendert nur die lokale JSON-Definition. Die Kachel bleibt gelb,
+          bis eine dokumentierte, mehrfach wiederholte Pruefung bestaetigt wurde.
+        </p>
+        <div class="editor-layout">
+          <label class="field">Signal
+            <select id="editor-select"></select>
+          </label>
+          <label class="field">Name
+            <input id="editor-name" type="text">
+          </label>
+          <label class="field">Typ
+            <select id="editor-kind">
+              <option value="bool">Boolesch</option>
+              <option value="value">Numerisch</option>
+              <option value="bus">CAN-Bus aktiv (System)</option>
+            </select>
+          </label>
+          <label class="field">Einheit
+            <input id="editor-unit" type="text" placeholder="z. B. km/h">
+          </label>
+          <label class="field">CAN-ID (hex)
+            <input id="editor-can-id" type="text" placeholder="z. B. 0x1A0">
+          </label>
+          <label class="field">Frame-Typ
+            <select id="editor-extended">
+              <option value="false">Standard (11 Bit)</option>
+              <option value="true">Extended (29 Bit)</option>
+            </select>
+          </label>
+          <label class="field">DLC
+            <input id="editor-dlc" type="number" min="1" max="8" value="8">
+          </label>
+          <label class="field">Byteposition (0-basiert)
+            <input id="editor-byte" type="number" min="0" max="7" value="0">
+          </label>
+          <label class="field">Laenge (Bytes)
+            <input id="editor-length" type="number" min="1" max="8" value="1">
+          </label>
+          <label class="field">Endianness
+            <select id="editor-endianness">
+              <option value="little">Little Endian</option>
+              <option value="big">Big Endian</option>
+            </select>
+          </label>
+          <label class="field">Bitmaske (hex)
+            <input id="editor-mask" type="text" value="0x1">
+          </label>
+          <label class="field">Vergleichswert
+            <input id="editor-compare" type="text" placeholder="leer = nur != 0">
+          </label>
+          <label class="check"><input id="editor-invert" type="checkbox"> Invertieren</label>
+          <label class="field">Timeout (ms)
+            <input id="editor-timeout" type="number" min="100" max="60000" value="2000">
+          </label>
+          <label class="field">Wertebereich min (optional)
+            <input id="editor-min" type="number" step="any">
+          </label>
+          <label class="field">Wertebereich max (optional)
+            <input id="editor-max" type="number" step="any">
+          </label>
+          <label class="field">Faktor
+            <input id="editor-factor" type="number" step="any" value="1">
+          </label>
+          <label class="field">Offset
+            <input id="editor-offset" type="number" step="any" value="0">
+          </label>
+          <label class="field wide">Notizen
+            <textarea id="editor-notes" rows="2"></textarea>
+          </label>
+        </div>
+        <div class="toolbar">
+          <button id="editor-save" class="button" type="button">Definition speichern</button>
+          <button id="editor-reload" class="button secondary" type="button">Neu laden</button>
+          <button id="editor-testing" class="button secondary" type="button">In Pruefung setzen</button>
+          <button id="editor-reject" class="button secondary" type="button">Als verworfen markieren</button>
+          <span id="editor-status" class="muted"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Bestaetigung</h2>
+        <p class="muted">
+          Bestaetigung nur nach mindestens drei unabhaengigen Assistenten-Laeufen mit mindestens
+          zwei unterschiedlichen Aktionsbezeichnungen und ohne DEMO-Evidenz. Die Bestaetigung
+          dokumentiert die praktische Pruefung; sie ist keine automatische Signalzuordnung.
+        </p>
+        <div id="confirm-summary" class="confirm-summary"></div>
+        <label class="field wide">Bestaetigungsnotiz
+          <textarea id="confirm-note" rows="2" placeholder="Fahrzeugzustand, Gegenprobe, Wiederholungen, Datum ..."></textarea>
+        </label>
+        <label class="check"><input id="confirm-checklist" type="checkbox"> Ich habe die Gegenaktion und mindestens drei unabhaengige Wiederholungen praktisch geprueft.</label>
+        <div class="toolbar">
+          <button id="confirm-button" class="button" type="button">Signal bestaetigen</button>
+          <button id="confirm-reset" class="button secondary" type="button">Kandidatenstatus anzeigen</button>
+          <span id="confirm-status" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-references" class="tab-panel">
+      <div class="panel">
+        <h2>Unverifizierte Referenzen</h2>
+        <p class="warning">
+          Diese IDs stammen aus anderen Volvo-Plattformen (P1/P2) oder aus einem Produktprospekt.
+          Keine ID ist als V90-2021-SPA-Definition bestaetigt. Sie werden nicht automatisch als
+          Signalkachel geladen.
+        </p>
+        <div id="reference-sources"></div>
+        <div id="reference-list"></div>
+      </div>
+    </section>
+
+    <section id="tab-export" class="tab-panel">
+      <div class="grid two">
+        <div class="panel">
+          <h2>Status und Verluste</h2>
+          <div id="export-status" class="kv"></div>
+          <div class="toolbar">
+            <a class="button" href="/api/export/session?format=csv">Session-CSV</a>
+            <a class="button secondary" href="/api/export/session?format=jsonl">Roh-JSONL</a>
+            <a class="button secondary" href="/api/export/session?format=json">Roh-JSON</a>
+            <a class="button secondary" href="/api/export/events?format=jsonl">Events-JSONL</a>
+            <a class="button secondary" href="/api/export/events?format=json">Events-JSON</a>
+            <a class="button secondary" href="/api/export/generated">ESP32-Konfiguration</a>
+            <a class="button secondary" href="/api/export/confirmed">Bestaetigte Signale</a>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Messdateien</h2>
+          <p class="muted">CSV/JSON-Export pro Messung. Die Session-CSV enthaelt alle Frames unabhaengig von GUI-Filtern.</p>
+          <div id="measurement-files"></div>
+          <button id="measurement-refresh" class="button secondary" type="button">Dateiliste aktualisieren</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Letzte Rohframes (ungefiltert)</h2>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Zeit</th><th>CAN-ID</th><th>Typ</th><th>DLC</th><th>Daten</th><th>DEMO</th></tr></thead>
+            <tbody id="raw-frames"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Volvo CAN Control · lokale Signalerkennung · ausschliesslich LISTEN_ONLY · keine CAN-Uebertragung · GPIO-Ausgaenge deaktiviert
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

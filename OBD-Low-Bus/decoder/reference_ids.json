@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "updated": "2026-11-03T20:05:00Z",
+  "target": {
+    "model": "Volvo V90 T8",
+    "platform": "SPA",
+    "model_year": 2021
+  },
+  "warning": "Diese Datei enthaelt ausschliesslich unverifizierte Hypothesen aus anderen Volvo-Plattformen. Keine ID ist als V90-2021-SPA-Signal bestaetigt. Nicht automatisch als Fahrzeugdecoder verwenden.",
+  "sources": [
+    {
+      "id": "alfaa123",
+      "url": "https://github.com/Alfaa123/Volvo-CAN-Gauge",
+      "source_platform": "Volvo P1 (C30 2011)",
+      "model_year": "2011",
+      "target_applicable": false,
+      "confidence": "source-specific, not SPA",
+      "notes": "README: 2011 Volvo C30 T5; 29-bit IDs; 500 kbit/s High-Speed und 125 kbit/s Low-Speed; CEM als Gateway; OBD2-Zugriff auf beide Busse. Keine V90-2021-SPA-Belegung."
+    },
+    {
+      "id": "alfaa123_rxlist",
+      "url": "https://github.com/Alfaa123/Volvo-CAN-Gauge/blob/master/Sniffing/RX%20List.txt",
+      "source_platform": "Volvo P1 (C30 2011)",
+      "model_year": "2011",
+      "target_applicable": false,
+      "confidence": "sniffed broadcast list, other platform",
+      "notes": "Kommentierte Empfangsliste des C30; Perioden und Vermutungen stammen aus diesem Fahrzeug. Keine Uebertragbarkeit auf SPA belegt."
+    },
+    {
+      "id": "olegel",
+      "url": "https://github.com/olegel/VolvoCan",
+      "source_platform": "Volvo P2 (XC90, Autor-Fahrzeug)",
+      "model_year": "nicht im README genannt (XC90 der P2-Aera)",
+      "target_applicable": false,
+      "confidence": "source-specific, not SPA",
+      "notes": "Low-Speed-CAN-Adapter, Listen-Only. README warnt: jedes Fahrzeug hat eigene CAN-Modul-IDs; IDs muessen selbst erkannt werden. Keine V90-2021-SPA-Belegung."
+    },
+    {
+      "id": "olegel_code",
+      "url": "https://github.com/olegel/VolvoCan/blob/master/VolvoCan/include/VolvoCan.h",
+      "source_platform": "Volvo P2 (XC90, Autor-Fahrzeug)",
+      "model_year": "nicht im README genannt",
+      "target_applicable": false,
+      "confidence": "source code, other platform",
+      "notes": "Konkrete Modul-IDs und Byte-/Bitmasken aus dem XC90-Adapter. Nur als Suchhilfe fuer eigene Messungen geeignet, nicht als V90-Definition."
+    },
+    {
+      "id": "automotive_can_ids",
+      "url": "https://github.com/realathu/Automotive-CAN-IDs",
+      "source_platform": "Index/Liste verschiedener Volvo-Plattformen",
+      "model_year": "verschiedene",
+      "target_applicable": false,
+      "confidence": "index only",
+      "notes": "Fork von iDoka/awesome-automotive-can-id. Enthaelt Links zu C30 2011, S60 2007/2009, XC70 2005, V60 2015 und P3-PIDs. Kein V90-2021-SPA-Datensatz gefunden."
+    },
+    {
+      "id": "speedsignal_332vo03fb",
+      "url": "https://manualzz.com/doc/87509182/speedsignal-332vo03fb-owner-s-manual",
+      "source_platform": "SpeedSignal CAN-Adapter fuer Volvo S60 III 2018-, S90 2016-, V60 II 2018-, V90 2016-, XC40 2017-, XC60 II 2017-, XC60 Mildhybrid 2020-, XC90 II 2015-",
+      "model_year": "V90 2016- (SPA)",
+      "target_applicable": false,
+      "confidence": "no CAN IDs published in accessible material",
+      "notes": "manualzz lieferte HTTP 403 (Anti-Bot). Suchtreffer bestaetigt nur Produktbeschreibung: Analogadapter fuer Geschwindigkeit, Klemme 15, Beleuchtung und Rueckwaertsgang. Es sind keine CAN-IDs oder Payloads oeffentlich belegt."
+    }
+  ],
+  "hypotheses": [
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x03C3F7FC",
+      "extended": true,
+      "purpose_hypothesis": "Ignition Status",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Kommentar in der C30-2011-Empfangsliste; keine Bitposition dokumentiert."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x0E03D7F8",
+      "extended": true,
+      "purpose_hypothesis": "Exterior lights symbols",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Kommentar in der C30-2011-Empfangsliste; keine Bitposition dokumentiert."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x065373BA",
+      "extended": true,
+      "purpose_hypothesis": "Door And Lock Status",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; keine Bitposition dokumentiert."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x1760E008",
+      "extended": true,
+      "purpose_hypothesis": "Gauge Cluster Speed and Warning Lights",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; Geschwindigkeit/Warnleuchten nur als Kommentar, kein Decoder."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x021204B8",
+      "extended": true,
+      "purpose_hypothesis": "Turn Signals",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; keine Bitposition dokumentiert."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x1163F7FC",
+      "extended": true,
+      "purpose_hypothesis": "Door Sensors",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; keine Bitposition dokumentiert."
+    },
+    {
+      "source_id": "alfaa123",
+      "can_id": "0x19E00006",
+      "extended": true,
+      "purpose_hypothesis": "Ignition status (broadcast in source code)",
+      "byte": 6,
+      "bit_mask": "0x40",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code prueft data.bytes[6] & 0x40 auf Ignition. C30 2011 P1, nicht V90 SPA."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x09C050B8",
+      "extended": true,
+      "purpose_hypothesis": "Gauge/Cluster: Brightness, Mileage, Tacho",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; Mischsignal, ausdruecklich nicht als einfache LED verwenden."
+    },
+    {
+      "source_id": "alfaa123_rxlist",
+      "can_id": "0x1EF00066",
+      "extended": true,
+      "purpose_hypothesis": "Turns on/off with ignition",
+      "byte": null,
+      "bit_mask": null,
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "C30 2011; nur Kommentar, keine Bitposition."
+    },
+    {
+      "source_id": "olegel_code",
+      "can_id": "0x03003028",
+      "extended": true,
+      "purpose_hypothesis": "Gear selector / driving gear (XC90)",
+      "byte": 2,
+      "bit_mask": "0x07 / 0x70",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code: data[2]&0x07 fuer Gear, (data[2]&0x70)>>5 fuer DrivingGear. XC90 P2; README warnt vor fahrzeugspezifischen IDs."
+    },
+    {
+      "source_id": "olegel_code",
+      "can_id": "0x00E00442",
+      "extended": true,
+      "purpose_hypothesis": "CCM: parking button / light meter (XC90)",
+      "byte": 2,
+      "bit_mask": "0x40; byte 3 low nibble",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code: data[2]&0x40 ParkButton; data[3]&0x0F LightMeter. XC90 P2."
+    },
+    {
+      "source_id": "olegel_code",
+      "can_id": "0x01E0522E",
+      "extended": true,
+      "purpose_hypothesis": "REM: parking distance (XC90)",
+      "byte": 3,
+      "bit_mask": ">> 3",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code: MaxParkingDistance - (data[3]>>3). XC90 P2."
+    },
+    {
+      "source_id": "olegel_code",
+      "can_id": "0x00617FF8",
+      "extended": true,
+      "purpose_hypothesis": "CEM: key position / key in lock (XC90)",
+      "byte": 6,
+      "bit_mask": ">> 5; 0x04; 0x03",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code: keyPosition=data[6]>>5; key=(keyPosition&0x04)>0; keyPosition&0x03. XC90 P2."
+    },
+    {
+      "source_id": "olegel_code",
+      "can_id": "0x00404066",
+      "extended": true,
+      "purpose_hypothesis": "SWM: steering wheel buttons (XC90)",
+      "byte": 6,
+      "bit_mask": "0x3F; byte 7 0x3F invertiert",
+      "target_applicable": false,
+      "confidence": "unverified-other-platform",
+      "notes": "Code kombiniert data[6]&0x3F und (~data[7])&0x3F. XC90 P2."
+    }
+  ]
+}

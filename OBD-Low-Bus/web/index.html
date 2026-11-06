@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Volvo CAN Control</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">VCC</div>
+      <div>
+        <h1>Volvo CAN Control</h1>
+        <p>Passive CAN-Analyse &middot; V0.1</p>
+      </div>
+    </div>
+    <div id="connection" class="pill ok">Verbunden</div>
+  </header>
+
+  <div id="demo-banner" class="demo-banner hidden">
+    DEMO-MODUS: Alle angezeigten Frames sind synthetisch und keine Fahrzeugdaten.
+  </div>
+
+  <nav class="tabs" aria-label="Bereiche">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="monitor">CAN-Livemonitor</button>
+    <button class="tab" data-tab="compare">Signalvergleich</button>
+    <button class="tab" data-tab="record">Aufzeichnung</button>
+    <button class="tab" data-tab="settings">Einstellungen</button>
+  </nav>
+
+  <main>
+    <section id="tab-dashboard" class="tab-panel active">
+      <div class="safety">
+        <strong>Sicherheitsmodus:</strong> TWAI ausschliesslich <code>LISTEN_ONLY</code>.
+        Es werden keine CAN-Frames gesendet, keine Diagnoseanfragen gestellt und keine
+        Fahrzeugsteuergeraete veraendert.
+      </div>
+
+      <div class="cards">
+        <article class="card"><span>Quelle</span><strong id="card-source">-</strong><small id="card-source-note">-</small></article>
+        <article class="card"><span>CAN-Status</span><strong id="card-state">-</strong><small>TWAI / Demo</small></article>
+        <article class="card"><span>CAN-Bitrate</span><strong id="card-bitrate">-</strong><small>500 kbit/s ist nicht als Volvo-Wert bestaetigt</small></article>
+        <article class="card"><span>Nachrichten/s</span><strong id="card-rate">-</strong><small>gleitendes 1-Sekunden-Fenster</small></article>
+        <article class="card"><span>Empfangen gesamt</span><strong id="card-total">-</strong><small>seit letztem Quellwechsel</small></article>
+        <article class="card"><span>Unterschiedliche IDs</span><strong id="card-ids">-</strong><small>aktuelle Beobachtung</small></article>
+        <article class="card"><span>Fehler</span><strong id="card-errors">-</strong><small id="card-errors-note">TWAI-Fehler / RX-Queue voll</small></article>
+        <article class="card"><span>Verworfen</span><strong id="card-dropped">-</strong><small>Live-Ring / Aufzeichnung</small></article>
+        <article class="card"><span>USB-Logger</span><strong id="card-usb">-</strong><small id="card-usb-note">TX / verworfen / Fehler</small></article>
+        <article class="card"><span>Arbeitsspeicher</span><strong id="card-ram">-</strong><small>freier Heap / PSRAM</small></article>
+        <article class="card"><span>Systemlaufzeit</span><strong id="card-uptime">-</strong><small>seit Boot</small></article>
+      </div>
+
+      <section class="panel">
+        <h2>Hinweise</h2>
+        <p>
+          Diese Version ist ausschliesslich fuer die passive Beobachtung gedacht.
+          Die Bedeutung einzelner CAN-IDs wird nicht automatisch behauptet. Fuer belastbare
+          Zuordnungen muessen Messphasen wiederholt und experimentell verglichen werden.
+        </p>
+        <p class="muted">
+          Alle Zeitstempel sind monotone Mikrosekunden seit dem Boot des ESP32.
+          Fuer lange Messungen den Python-Collector auf dem Windows-Laptop verwenden.
+        </p>
+      </section>
+    </section>
+
+    <section id="tab-monitor" class="tab-panel">
+      <div class="toolbar">
+        <label class="field">
+          <span>CAN-ID filtern</span>
+          <input id="filter-id" type="search" inputmode="text" placeholder="z. B. 1A0 oder 0x1A0" autocomplete="off">
+        </label>
+        <button id="btn-pause" class="button secondary" type="button">Pausieren</button>
+        <button id="btn-clear" class="button secondary" type="button">Liste loeschen</button>
+        <label class="check"><input id="sort-freq" type="checkbox"> Nach Haeufigkeit sortieren</label>
+        <span id="monitor-dropped" class="muted"></span>
+      </div>
+      <div id="hidden-wrap" class="hidden-wrap hidden">
+        <span class="muted">Ausgeblendet:</span>
+        <div id="hidden-list" class="chips"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Zeit (s)</th>
+              <th>CAN-ID</th>
+              <th>Typ</th>
+              <th>DLC</th>
+              <th>Daten (Hex)</th>
+              <th>Haeufigkeit</th>
+              <th>Quelle</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="msg-body">
+            <tr><td colspan="8" class="empty">Noch keine Frames. Demo-Modus kann in den Einstellungen aktiviert werden.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-compare" class="tab-panel">
+      <div class="grid two">
+        <article class="panel phase phase-a">
+          <h2>Phase A &middot; vorher</h2>
+          <p id="phase-a-state" class="phase-state">leer</p>
+          <p class="phase-meta"><span id="phase-a-frames">0</span> Frames &middot; <span id="phase-a-duration">0,0 s</span></p>
+          <div class="button-row">
+            <button id="phase-a-start" class="button" type="button">Phase A starten</button>
+            <button id="phase-a-stop" class="button secondary" type="button">Phase A stoppen</button>
+          </div>
+        </article>
+        <article class="panel phase phase-b">
+          <h2>Phase B &middot; nachher</h2>
+          <p id="phase-b-state" class="phase-state">leer</p>
+          <p class="phase-meta"><span id="phase-b-frames">0</span> Frames &middot; <span id="phase-b-duration">0,0 s</span></p>
+          <div class="button-row">
+            <button id="phase-b-start" class="button" type="button">Phase B starten</button>
+            <button id="phase-b-stop" class="button secondary" type="button">Phase B stoppen</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="toolbar">
+        <button id="compare-refresh" class="button" type="button">Vergleich aktualisieren</button>
+        <button id="compare-reset" class="button secondary" type="button">Phasen zuruecksetzen</button>
+        <a id="compare-csv" class="button secondary" href="/api/compare/export?format=csv">Vergleich als CSV</a>
+        <a id="compare-json" class="button secondary" href="/api/compare/export?format=json">Vergleich als JSON</a>
+      </div>
+
+      <div id="compare-result" class="compare-result">
+        <p class="muted">Phase A und B starten/stoppen, dann den Vergleich aktualisieren.</p>
+      </div>
+    </section>
+
+    <section id="tab-record" class="tab-panel">
+      <div class="cards">
+        <article class="card"><span>Status</span><strong id="record-status">bereit</strong><small>Ringpuffer im PSRAM</small></article>
+        <article class="card"><span>Frames</span><strong id="record-count">0</strong><small id="record-capacity">Kapazitaet: -</small></article>
+        <article class="card"><span>Verworfen</span><strong id="record-dropped">0</strong><small>Ringpuffer ueberschrieben</small></article>
+      </div>
+      <div class="button-row">
+        <button id="record-start" class="button" type="button">Aufzeichnung starten</button>
+        <button id="record-stop" class="button secondary" type="button">Aufzeichnung stoppen</button>
+        <a id="download-csv" class="button secondary" href="/api/export/csv">CSV herunterladen</a>
+        <a id="download-json" class="button secondary" href="/api/export/json">JSON herunterladen</a>
+      </div>
+      <section class="panel">
+        <h2>Lange Messungen mit Windows</h2>
+        <p>
+          Der ESP-Ringpuffer ist begrenzt. Fuer laengere Aufzeichnungen den Python-Collector
+          auf dem Laptop ausfuehren. Er verbindet sich mit dem ESP und schreibt jeden Frame
+          fortlaufend in eine CSV-Datei.
+        </p>
+        <pre class="code">python tools\volvo_can_collector.py --host 192.168.4.1 --port 81 --output messung.csv</pre>
+        <p class="muted">
+          Der Download im Browser ist nur nach dem Stoppen der Aufzeichnung moeglich.
+          Beim Export waehrend einer laufenden Aufzeichnung antwortet der ESP mit HTTP 409.
+        </p>
+      </section>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <section class="panel">
+        <h2>CAN und Demo</h2>
+        <div class="settings-grid">
+          <label class="field">
+            <span>CAN-Bitrate</span>
+            <select id="bitrate-select">
+              <option value="125">125 kbit/s</option>
+              <option value="250">250 kbit/s</option>
+              <option value="500" selected>500 kbit/s (Standard)</option>
+            </select>
+          </label>
+          <label class="check"><input id="demo-toggle" type="checkbox"> Demo-Modus (synthetische DEMO-Frames)</label>
+        </div>
+        <p class="warning">
+          Der Standardwert 500 kbit/s ist ausdruecklich <strong>nicht</strong> als bestaetigte
+          Volvo-Bitrate zu verstehen. Vor dem Anschluss am Fahrzeug die tatsaechliche
+          Bitrate verifizieren. Ein Wechsel von Bitrate oder Demo-Modus startet die Quelle
+          neu und loescht Live-/Phasendaten.
+        </p>
+        <div class="button-row">
+          <button id="btn-save-settings" class="button" type="button">Einstellungen speichern</button>
+          <span id="settings-status" class="muted"></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Zugang</h2>
+        <p>WLAN-AP: <strong>Volvo-CAN-Control</strong></p>
+        <p>Adresse: <strong>http://192.168.4.1</strong></p>
+        <p class="muted">
+          Das WLAN-Passwort steht in <code>include/secrets.h</code> und in der lokalen
+          Secret-Ablage des MGMT-Servers. Es wird nicht in der Weboberflaeche angezeigt.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Sicherheit</h2>
+        <ul class="list">
+          <li>TWAI ist ausschliesslich im Modus <code>LISTEN_ONLY</code> konfiguriert.</li>
+          <li>Es gibt keinen Aufruf von <code>twai_transmit</code> und keine Diagnoseanfragen.</li>
+          <li>GPIO1/GPIO2 bleiben in V0.1 hochohmig (INPUT), werden nicht angesteuert und sind nicht ueber die API schaltbar.</li>
+          <li>Kein automatischer Deep Sleep; CAN-Stille wird nicht als Fahrzeug-Ruhe interpretiert.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    Volvo CAN Control V0.1 &middot; Nur passive, autorisierte Diagnose &middot; Keine Fahrzeugsteuerung
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

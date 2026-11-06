@@ -1,0 +1,16 @@
+.pio/
+.venv/
+.vscode/
+firmware/include/secrets.h
+*.bin
+*.elf
+*.map
+__pycache__/
+*.pyc
+data/export/
+messungen/
+SAVE_*/
+*.tar.gz
+*.zip
+*.lnk
+.pytest_cache/
