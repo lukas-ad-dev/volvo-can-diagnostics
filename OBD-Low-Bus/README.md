@@ -78,13 +78,10 @@ dient `firmware/include/secrets.example.h`.
 ## Dokumentation
 
 - `docs/HARDWARE.md`
+- `docs/HARDWARE.md`
 - `docs/MESSUNGEN_20261104.md`
 - `docs/SIGNALERKENNUNG.md`
 - `docs/CAN_ANALYSE.md`
 - `docs/CAN_REFERENZEN.md`
 - `docs/ARCHITEKTUR.md`
 - `docs/ROADMAP.md`
-- `docs/MESSUNGEN_20261104.md`
-- `docs/WINDOWS_IMPORT_2026-11-05.md`
-- `docs/WINDOWS_VS_SERVER_DIFF.md`
-- `PROJEKTUEBERSICHT.md`
