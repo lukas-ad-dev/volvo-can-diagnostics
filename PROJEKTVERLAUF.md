@@ -101,3 +101,20 @@ Diese Angaben fehlen noch und können vom Fahrzeughalter ergänzt werden:
 4. Oszilloskopmessung: GPIO15/TXD, U9-Ausgang und CAN-H/L bei Boot/START/STOP.
 5. Ob 500 kbit/s exakt dem CEM-Bus entsprechen (zweite Gegenmessung).
 6. Welche Signale Priorität haben (Rückwärtsgang, Licht, Ambient, Kamera).
+
+### 2026-11-06 – Abendtests und Signalzustände
+
+- Live-Tests mit mehreren Millionen Frames; im Normalbetrieb 0 Busfehler.
+- `0x030`/`0x035` als Zwillingsnachrichten bestätigt (Bytes 1–7 identisch,
+  Byte 0 XOR 0x65). Byte 0 ist Zähler/Integrität.
+- Abblendlicht praktisch bestätigt: `86 03`.
+- Fernlicht praktisch bestätigt: `92 2B` manuell, `92 6B` Automatik/Nacht,
+  weitere Basis `92 4B`; generische Maske `0x9008`.
+- Lichthupe: `7C69`, bisher bei Abblendlicht AUS.
+- Blinker: `0x040` Byte 5 Bit 4 links, Bit 5 rechts, beide beim Warnblinker;
+  `0x050` Byte 4–7 `01900190` normal, `01F4012C` Warnblinker.
+- Wegbeleuchtung bleibt als `7C60` sichtbar; der Einschaltbefehl wurde nicht
+  gefunden. `0x531`/`0x532` erscheinen als Wake-/NM-Frames.
+- Bremspedal und Fahrstufe N/R waren auf dem CEM-11-Bit-Bus nicht sichtbar.
+- GUI: kompakte Signal-Karten, Detailansicht per Klick, Archiv für alte
+  Kandidaten, Messungsverwaltung und A/B-Signalanalyse.

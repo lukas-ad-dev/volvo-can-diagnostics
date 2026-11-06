@@ -105,19 +105,27 @@ main { padding: 0 clamp(14px, 3vw, 34px) 34px; }
 .led.gray { background: var(--gray); color: var(--gray); }
 .led.yellow { background: var(--yellow); color: var(--yellow); }
 .led.red { background: var(--red); color: var(--red); }
-
-.signal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 12px; }
+.signal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
 .signal-card {
   border: 1px solid var(--line); background: linear-gradient(180deg, var(--panel), var(--bg-soft));
-  border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 7px;
+  border-radius: var(--radius); padding: 8px 10px; box-shadow: var(--shadow); display: flex;
+  flex-direction: column; gap: 4px; cursor: pointer;
 }
+.signal-card:hover { border-color: rgba(118, 183, 255, 0.55); }
+.signal-card:focus { outline: 2px solid rgba(118, 183, 255, 0.65); outline-offset: 2px; }
 .signal-card.unknown { border-color: rgba(245, 197, 66, 0.28); }
 .signal-card.stale { border-color: rgba(255, 107, 107, 0.35); }
-.signal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.signal-name { font-weight: 800; font-size: 1rem; }
-.signal-state { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.01em; }
-.signal-value { font-size: 1.45rem; font-variant-numeric: tabular-nums; }
-.signal-meta { color: var(--muted); font-size: 0.76rem; display: grid; grid-template-columns: auto 1fr; gap: 3px 9px; }
+.signal-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.signal-name { font-weight: 800; font-size: 0.86rem; line-height: 1.2; }
+.signal-state { font-size: 0.92rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.2; }
+.signal-value { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.signal-chevron { color: var(--muted); font-weight: 800; font-size: 1rem; line-height: 1; }
+.signal-details { display: none; }
+.signal-card.expanded .signal-details {
+  display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line);
+  margin-top: 3px; padding-top: 6px;
+}
+.signal-meta { color: var(--muted); font-size: 0.72rem; display: grid; grid-template-columns: auto 1fr; gap: 3px 9px; }
 .signal-meta b { color: var(--text); font-weight: 600; }
 .signal-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
 .badge { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; font-size: 0.68rem; font-weight: 800; color: var(--muted); }
@@ -201,3 +209,12 @@ footer { padding: 16px clamp(14px, 3vw, 34px) 24px; color: var(--muted); font-si
   .session-actions input, .session-actions select { width: 100%; }
   .editor-layout { grid-template-columns: 1fr; }
 }
+
+.bitmatrix { overflow: auto; }
+.bitmatrix table { border-collapse: collapse; font-family: "Cascadia Mono", "Consolas", monospace; font-size: 0.72rem; }
+.bitmatrix th, .bitmatrix td { border: 1px solid var(--line); padding: 3px 5px; text-align: center; min-width: 24px; }
+.bitmatrix td.stable { color: var(--muted); }
+.bitmatrix td.changing { color: var(--yellow); background: rgba(245, 197, 66, 0.10); }
+.bitmatrix td.candidate { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bitmatrix td.padding { color: #3a4b61; background: rgba(255,255,255,0.02); }
+#analysis-canvas { width: 100%; height: auto; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; }

@@ -26,6 +26,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
+import analysis_engine
+
 try:
     import serial
     from serial.tools import list_ports
@@ -756,6 +758,75 @@ class DiagnosticsApp:
             "assignments": dict(self.bit_assignments),
         }
 
+    # ---------- Signalanalyse ----------
+    def _analysis_raw_path(self, session: Optional[str]) -> Path:
+        if session:
+            raw_path, _ = analysis_engine.resolve_session(self.output_dir, session)
+            return raw_path
+        return self.raw_path
+
+    def analysis_sessions(self) -> dict:
+        with self.lock:
+            return {
+                "sessions": analysis_engine.list_sessions(self.output_dir, self.raw_path),
+                "current": self.raw_path.relative_to(self.output_dir).as_posix()
+                if self.raw_path.exists() else "",
+            }
+
+    def analysis_events(self, session: Optional[str] = None) -> dict:
+        raw_path = self._analysis_raw_path(session)
+        events_path = raw_path.with_name(raw_path.name.replace("_raw.jsonl", "_events.jsonl"))
+        events = analysis_engine.load_events(events_path)
+        labels = sorted({event["label"] for event in events if event["label"]})
+        return {
+            "session": raw_path.relative_to(self.output_dir).as_posix(),
+            "events": events[-1500:],
+            "labels": labels,
+        }
+
+    def analysis_overview(self, session: Optional[str], id_filter: str = "",
+                          max_frames: Optional[int] = None) -> dict:
+        raw_path = self._analysis_raw_path(session)
+        result = analysis_engine.overview(raw_path, id_filter=id_filter, max_frames=max_frames)
+        result["session"] = raw_path.relative_to(self.output_dir).as_posix()
+        return result
+
+    def analysis_run(self, payload: dict) -> dict:
+        session = str(payload.get("session", "") or "")
+        raw_path = self._analysis_raw_path(session or None)
+        events_path = raw_path.with_name(raw_path.name.replace("_raw.jsonl", "_events.jsonl"))
+        label_a = str(payload.get("label_a", "") or "").strip()
+        label_b = str(payload.get("label_b", "") or "").strip()
+        if not label_a or not label_b:
+            raise ValueError("Zustand A und B muessen als Marker-Label gewaehlt werden")
+        before_s = float(payload.get("before_s", analysis_engine.DEFAULT_BEFORE_S))
+        after_s = float(payload.get("after_s", analysis_engine.DEFAULT_AFTER_S))
+        max_gap_s = float(payload.get("max_gap_s", analysis_engine.DEFAULT_MAX_GAP_S))
+        filters = payload.get("filters") or {}
+        result = analysis_engine.analyze(
+            raw_path, events_path, label_a, label_b,
+            before_s=before_s, after_s=after_s, max_gap_s=max_gap_s,
+            filters=filters, definitions=self.store.signals,
+        )
+        result["session"] = raw_path.relative_to(self.output_dir).as_posix()
+        result["label_a"] = label_a
+        result["label_b"] = label_b
+        result["before_s"] = before_s
+        result["after_s"] = after_s
+        return result
+
+    def analysis_timeline(self, session: Optional[str], label_a: str, label_b: str,
+                          can_id: int, extended: bool, byte: int, bit: int,
+                          before_s: float, after_s: float, max_gap_s: float) -> dict:
+        raw_path = self._analysis_raw_path(session or None)
+        events_path = raw_path.with_name(raw_path.name.replace("_raw.jsonl", "_events.jsonl"))
+        result = analysis_engine.timeline(
+            raw_path, events_path, label_a, label_b, can_id, extended,
+            byte, bit, before_s, after_s, max_gap_s,
+        )
+        result["session"] = raw_path.relative_to(self.output_dir).as_posix()
+        return result
+
     # ---------- assistant ----------
     def assistant_start(self, action_label: str = "") -> dict:
         with self.lock:
@@ -1134,6 +1205,30 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"assistant": self.app.assistant_data(), "scenarios": SCENARIOS})
             elif path == "/api/bitwatch":
                 self._send_json(self.app.bitwatch_status())
+            elif path == "/api/analysis/sessions":
+                self._send_json(self.app.analysis_sessions())
+            elif path == "/api/analysis/events":
+                self._send_json(self.app.analysis_events(query.get("session", [""])[0] or None))
+            elif path == "/api/analysis/overview":
+                max_frames = query.get("max_frames", [""])[0]
+                self._send_json(self.app.analysis_overview(
+                    query.get("session", [""])[0] or None,
+                    query.get("id", [""])[0],
+                    int(max_frames) if max_frames else None,
+                ))
+            elif path == "/api/analysis/timeline":
+                self._send_json(self.app.analysis_timeline(
+                    query.get("session", [""])[0] or None,
+                    query.get("label_a", [""])[0],
+                    query.get("label_b", [""])[0],
+                    int(query.get("can_id", ["0"])[0]),
+                    query.get("extended", ["0"])[0] in {"1", "true", "True"},
+                    int(query.get("byte", ["0"])[0]),
+                    int(query.get("bit", ["0"])[0]),
+                    float(query.get("before_s", [str(analysis_engine.DEFAULT_BEFORE_S)])[0]),
+                    float(query.get("after_s", [str(analysis_engine.DEFAULT_AFTER_S)])[0]),
+                    float(query.get("max_gap_s", [str(analysis_engine.DEFAULT_MAX_GAP_S)])[0]),
+                ))
             elif path == "/api/export/list":
                 self._send_json(self.app.export_files())
             elif path == "/api/export/session":
@@ -1199,6 +1294,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(self.app.bitwatch_assign(
                     str(body.get("key", "")), str(body.get("label", ""))
                 ))
+            elif path == "/api/analysis/run":
+                self._send_json(self.app.analysis_run(body))
             elif path == "/api/signals":
                 self._send_json(self.app.save_signal(body))
             elif path == "/api/signals/status":

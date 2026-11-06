@@ -6,11 +6,22 @@ const state = {
   references: null,
   assistant: null,
   bitwatch: null,
+  analysis: {
+    sessions: [],
+    events: [],
+    labels: [],
+    result: null,
+    selected: null,
+    overview: null,
+    current: "",
+  },
   scenarios: {},
   events: [],
   lastEventId: 0,
   selectedSignal: null,
   editorSignalId: null,
+  expandedSignals: new Set(),
+  showArchivedSignals: false,
   scenariosLoaded: false,
   monitorFrames: [],
   monitorLastSeq: 0,
@@ -25,6 +36,22 @@ const state = {
 
 let assistantSelectActive = false;
 let bitwatchInputActive = false;
+
+const CURRENT_SIGNAL_IDS = new Set([
+  "light_state_8603",
+  "high_beam_any",
+  "high_beam_flash",
+  "light_off",
+  "blinker_left_command",
+  "blinker_right_command",
+  "blinker_right_status",
+  "blinker_hazard_status",
+]);
+
+function visibleSignals() {
+  if (state.showArchivedSignals) return state.signals;
+  return state.signals.filter((signal) => CURRENT_SIGNAL_IDS.has(signal.id));
+}
 
 function $(id) { return document.getElementById(id); }
 
@@ -106,6 +133,7 @@ function tabTo(name) {
   if (name === "monitor") pollMonitor(true);
   if (name === "assistant") pollAssistant();
   if (name === "bits") pollBitwatch();
+  if (name === "analysis") loadAnalysisSessions();
   if (name === "references") loadReferences();
   if (name === "export") { pollStatus(); refreshExportFiles(); pollRawFrames(); }
   if (name === "live") {
@@ -202,9 +230,15 @@ async function pollSignals() {
 function renderSignals() {
   const grid = $("signal-grid");
   grid.replaceChildren();
-  for (const signal of state.signals) {
+  for (const signal of visibleSignals()) {
+    const isExpanded = state.expandedSignals.has(signal.id);
     const card = document.createElement("article");
     card.className = "signal-card" + (signal.unknown ? " unknown" : "") + (signal.stale ? " stale" : "");
+    card.classList.toggle("expanded", isExpanded);
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    card.title = "Klicken fuer Details";
     const head = document.createElement("div");
     head.className = "signal-head";
     const titleWrap = document.createElement("div");
@@ -218,7 +252,10 @@ function renderSignals() {
     const led = document.createElement("span");
     led.className = "led " + signal.led;
     led.title = signal.state_text;
-    head.append(titleWrap, led);
+    const expand = document.createElement("span");
+    expand.className = "signal-chevron";
+    expand.textContent = isExpanded ? "−" : "+";
+    head.append(titleWrap, led, expand);
     card.appendChild(head);
 
     const stateEl = document.createElement("div");
@@ -234,6 +271,8 @@ function renderSignals() {
       card.appendChild(value);
     }
 
+    const details = document.createElement("div");
+    details.className = "signal-details";
     const meta = document.createElement("div");
     meta.className = "signal-meta";
     const addMeta = (key, value) => {
@@ -242,19 +281,18 @@ function renderSignals() {
       meta.append(k, v);
     };
     addMeta("Byte / Maske", signal.byte === null ? "-" : `Byte ${signal.byte} · 0x${Number(signal.bit_mask).toString(16).toUpperCase()}`);
-    addMeta("Letzte Aktualisierung", signal.last_update ? `${fmtTime(signal.last_update)} (${fmtAge(signal.age_ms)})` : "-");
     addMeta("Empfang", fmtFrequency(signal.freq_hz));
     addMeta("Vertrauen", statusLabel(signal.status));
     addMeta("Messungen", (signal.measurements || []).length ? signal.measurements.slice(-3).join(", ") : "-");
     addMeta("Evidenz", `${signal.evidence_count || 0} Laeufe${signal.demo ? " · DEMO" : ""}`);
-    card.appendChild(meta);
+    details.appendChild(meta);
 
     const hint = rawHint(signal);
     if (hint) {
       const hintEl = document.createElement("div");
       hintEl.className = "muted small";
       hintEl.textContent = hint;
-      card.appendChild(hintEl);
+      details.appendChild(hintEl);
     }
 
     const actions = document.createElement("div");
@@ -266,24 +304,44 @@ function renderSignals() {
     live.className = "button small secondary"; live.type = "button"; live.textContent = "Live-Test";
     live.addEventListener("click", () => { state.selectedSignal = signal.id; tabTo("live"); renderLive(); });
     actions.append(edit, live);
-    card.appendChild(actions);
+    details.appendChild(actions);
+    card.appendChild(details);
+    const toggle = () => {
+      if (state.expandedSignals.has(signal.id)) state.expandedSignals.delete(signal.id);
+      else state.expandedSignals.add(signal.id);
+      renderSignals();
+    };
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      toggle();
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
     grid.appendChild(card);
   }
 }
 
 function renderSignalSelectors() {
+  const signals = visibleSignals();
   for (const id of ["live-signal", "editor-select"]) {
     const select = $(id);
     if (!select) continue;
     const current = id === "live-signal" ? state.selectedSignal : state.editorSignalId;
     select.replaceChildren();
-    for (const signal of state.signals) {
+    for (const signal of signals) {
       const option = document.createElement("option");
       option.value = signal.id;
       option.textContent = `${signal.name}${signal.id_hex ? " · " + signal.id_hex : ""}`;
       select.appendChild(option);
     }
-    if (current) select.value = current;
+    const selected = signals.some((signal) => signal.id === current) ? current : signals[0]?.id;
+    if (selected) select.value = selected;
+    if (id === "live-signal") state.selectedSignal = selected || null;
+    else state.editorSignalId = selected || null;
   }
 }
 
@@ -641,6 +699,428 @@ function renderBitwatch(data) {
     row.append(idCell, byteCell, bitCell, changeCell, liveCell, labelCell);
     tbody.appendChild(row);
   }
+}
+
+/* ---------- Signalanalyse ---------- */
+
+function analysisSessionValue() {
+  return $("analysis-session").value;
+}
+
+async function loadAnalysisSessions() {
+  try {
+    const data = await api("/api/analysis/sessions");
+    state.analysis.sessions = data.sessions || [];
+    state.analysis.current = data.current || "";
+    const select = $("analysis-session");
+    select.replaceChildren();
+    for (const session of state.analysis.sessions) {
+      const option = document.createElement("option");
+      option.value = session.session;
+      option.textContent = (session.current ? "* " : "") + (session.name || session.session);
+      select.appendChild(option);
+    }
+    const preferredSession = state.analysis.sessions.find((item) => item.current && item.size > 0)
+      || state.analysis.sessions.find((item) => !item.current && item.size > 0)
+      || state.analysis.sessions.find((item) => item.current)
+      || state.analysis.sessions[0];
+    if (preferredSession) select.value = preferredSession.session;
+    await loadAnalysisEvents();
+  } catch (error) {
+    text("analysis-status", "Sessions nicht erreichbar: " + error.message);
+  }
+}
+
+function renderAnalysisEvents() {
+  const container = $("analysis-events");
+  container.replaceChildren();
+  const events = state.analysis.events || [];
+  if (!events.length) {
+    const empty = document.createElement("div");
+    empty.className = "muted small";
+    empty.textContent = "Keine Marker/Events in dieser Session.";
+    container.appendChild(empty);
+    return;
+  }
+  for (const event of events.slice(-300).reverse()) {
+    const row = document.createElement("div");
+    row.className = "timeline-entry user";
+    const time = document.createElement("span");
+    time.className = "timeline-time";
+    time.textContent = fmtTime(event.timestamp);
+    const label = document.createElement("strong");
+    label.textContent = event.label;
+    const kind = document.createElement("span");
+    kind.className = "muted small";
+    kind.textContent = event.kind || "";
+    row.append(time, label, kind);
+    container.appendChild(row);
+  }
+}
+
+async function loadAnalysisEvents() {
+  const session = analysisSessionValue();
+  if (!session) return;
+  try {
+    const data = await api(`/api/analysis/events?session=${encodeURIComponent(session)}`);
+    state.analysis.events = data.events || [];
+    state.analysis.labels = data.labels || [];
+    const datalist = $("analysis-labels");
+    datalist.replaceChildren();
+    for (const label of state.analysis.labels) {
+      const option = document.createElement("option");
+      option.value = label;
+      datalist.appendChild(option);
+    }
+    renderAnalysisEvents();
+    const selected = state.analysis.sessions.find((item) => item.session === session);
+    $("analysis-session-info").textContent = selected
+      ? `${selected.name || session} | ${(selected.size / 1024 / 1024).toFixed(1)} MB`
+      : session;
+  } catch (error) {
+    text("analysis-status", "Events nicht erreichbar: " + error.message);
+  }
+}
+
+async function markAnalysisEvent(label) {
+  if (!label) return;
+  if (analysisSessionValue() !== state.analysis.current) {
+    toast("Marker koennen nur in der aktuellen Live-Session gesetzt werden.", true);
+    return;
+  }
+  try {
+    await api("/api/event/mark", { method: "POST", body: JSON.stringify({ label }) });
+    await pollEvents();
+    await loadAnalysisEvents();
+    toast("Marker gesetzt: " + label);
+  } catch (error) { toast(error.message, true); }
+}
+
+function analysisFilters() {
+  const filters = {};
+  const id = $("analysis-filter-id").value.trim();
+  const byte = $("analysis-filter-byte").value.trim();
+  const bit = $("analysis-filter-bit").value.trim();
+  if (id) filters.id = id;
+  if (byte) filters.byte = Number(byte);
+  if (bit) filters.bit = Number(bit);
+  filters.min_correlation = Number($("analysis-min-corr").value || 0);
+  filters.hide_counters = $("analysis-hide-counters").checked;
+  filters.hide_wakeup = $("analysis-hide-wakeup").checked;
+  filters.stable_only = $("analysis-stable-only").checked;
+  return filters;
+}
+
+async function runAnalysis() {
+  const session = analysisSessionValue();
+  const labelA = $("analysis-label-a").value.trim();
+  const labelB = $("analysis-label-b").value.trim();
+  if (!session) { toast("Keine Session gewaehlt", true); return; }
+  if (!labelA || !labelB) { toast("Zustand A und B als Marker-Label eingeben", true); return; }
+  text("analysis-status", "Analysiere...");
+  try {
+    const data = await api("/api/analysis/run", {
+      method: "POST",
+      body: JSON.stringify({
+        session,
+        label_a: labelA,
+        label_b: labelB,
+        before_s: Number($("analysis-before").value || 2),
+        after_s: Number($("analysis-after").value || 5),
+        filters: analysisFilters(),
+      }),
+    });
+    state.analysis.result = data;
+    renderAnalysisResults();
+    const first = data.candidates && data.candidates[0];
+    if (first) await selectAnalysisCandidate(first);
+    else {
+      state.analysis.selected = null;
+      $("analysis-matrix").replaceChildren();
+      $("analysis-matrix-title").textContent = "";
+      clearAnalysisCanvas();
+    }
+    text("analysis-status", data.message || `${data.candidates.length} Kandidaten | ${data.pairs.length} A/B-Paare`);
+  } catch (error) {
+    text("analysis-status", "Analyse fehlgeschlagen: " + error.message);
+    toast(error.message, true);
+  }
+}
+
+function renderAnalysisResults() {
+  const data = state.analysis.result;
+  const tbody = $("analysis-results");
+  tbody.replaceChildren();
+  const wakeup = $("analysis-wakeup");
+  if (!data) {
+    wakeup.textContent = "";
+    return;
+  }
+  if (!data.candidates.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 10;
+    cell.className = "empty";
+    cell.textContent = data.message || "Keine Kandidaten.";
+    row.appendChild(cell);
+    tbody.appendChild(row);
+  } else {
+    data.candidates.forEach((candidate, index) => {
+      const row = document.createElement("tr");
+      row.dataset.index = String(index);
+      const type = document.createElement("td");
+      type.textContent = candidate.type === "byte" ? "Feld" : "Bit";
+      const id = document.createElement("td");
+      id.textContent = candidate.id_hex;
+      const byte = document.createElement("td");
+      byte.textContent = String(candidate.byte);
+      const bit = document.createElement("td");
+      bit.textContent = candidate.type === "byte" ? "Maske 0x" + Number(candidate.mask).toString(16).toUpperCase() : String(candidate.bit);
+      const a = document.createElement("td");
+      a.textContent = String(candidate.a_value);
+      const b = document.createElement("td");
+      b.textContent = String(candidate.b_value);
+      const changes = document.createElement("td");
+      changes.textContent = String(candidate.changes);
+      const corr = document.createElement("td");
+      corr.textContent = candidate.correlation.toFixed(1) + " %";
+      const confidence = document.createElement("td");
+      confidence.textContent = candidate.confidence;
+      const meaning = document.createElement("td");
+      const flags = [];
+      if (candidate.counter_suspect) flags.push("Zähler");
+      if (candidate.checksum_suspect) flags.push("Prüfsumme?");
+      if (candidate.periodic) flags.push("periodisch");
+      if (candidate.one_shot) flags.push("einmalig");
+      if (candidate.wakeup) flags.push("Wake-up");
+      meaning.textContent = [candidate.meaning || "unbekannt", ...flags].join(" | ");
+      row.append(type, id, byte, bit, a, b, changes, corr, confidence, meaning);
+      row.addEventListener("click", () => selectAnalysisCandidate(candidate));
+      tbody.appendChild(row);
+    });
+  }
+  if (data.wakeup_ids && data.wakeup_ids.length) {
+    wakeup.textContent = "Bus-Wake-up/Nur ein Zustand: " + data.wakeup_ids
+      .map((item) => item.id_hex).join(", ");
+  } else {
+    wakeup.textContent = "";
+  }
+}
+
+async function selectAnalysisCandidate(candidate) {
+  state.analysis.selected = candidate;
+  const rows = $("analysis-results").querySelectorAll("tr");
+  rows.forEach((row) => row.classList.remove("selected"));
+  const result = state.analysis.result;
+  if (result) {
+    const index = result.candidates.indexOf(candidate);
+    const row = $("analysis-results").querySelector(`tr[data-index="${index}"]`);
+    if (row) row.classList.add("selected");
+  }
+  await loadAnalysisMatrix(candidate);
+  await loadAnalysisTimeline(candidate);
+}
+
+async function loadAnalysisMatrix(candidate) {
+  const session = analysisSessionValue();
+  if (!session || !candidate) return;
+  $("analysis-matrix-title").textContent = `${candidate.id_hex} | DLC-bewusst`;
+  try {
+    const data = await api(`/api/analysis/overview?session=${encodeURIComponent(session)}&id=${encodeURIComponent(candidate.id_hex.replace(/^0x/, ""))}`);
+    const idEntry = (data.ids || []).find((item) => item.can_id === candidate.can_id && item.extended === candidate.extended);
+    renderAnalysisMatrix(candidate, idEntry);
+  } catch (error) {
+    $("analysis-matrix").textContent = "Matrix nicht verfuegbar: " + error.message;
+  }
+}
+
+function renderAnalysisMatrix(candidate, idEntry) {
+  const container = $("analysis-matrix");
+  container.replaceChildren();
+  if (!idEntry) {
+    container.textContent = "ID in dieser Session nicht gefunden.";
+    return;
+  }
+  const table = document.createElement("table");
+  const header = document.createElement("tr");
+  const first = document.createElement("th");
+  first.textContent = "Byte";
+  header.appendChild(first);
+  for (let bit = 7; bit >= 0; bit -= 1) {
+    const cell = document.createElement("th");
+    cell.textContent = "B" + bit;
+    header.appendChild(cell);
+  }
+  table.appendChild(header);
+  const candidates = (state.analysis.result && state.analysis.result.candidates) || [];
+  for (let byte = 0; byte < 8; byte += 1) {
+    const row = document.createElement("tr");
+    const label = document.createElement("th");
+    label.textContent = "Byte " + byte;
+    row.appendChild(label);
+    for (let bit = 7; bit >= 0; bit -= 1) {
+      const cell = document.createElement("td");
+      const byteData = idEntry.bytes[byte];
+      const bitData = byteData && byteData.bits[bit];
+      if (!bitData || bitData.padding) {
+        cell.textContent = "-";
+        cell.className = "padding";
+      } else {
+        cell.textContent = bitData.value === null ? "?" : String(bitData.value);
+        cell.className = bitData.changing ? "changing" : "stable";
+        cell.title = [
+          `Wechsel: ${bitData.changes}`,
+          bitData.last_change_s !== null ? `zuletzt: +${bitData.last_change_s} s` : "keine Aenderung",
+          bitData.mean_interval_ms ? `Intervall: ${bitData.mean_interval_ms} ms` : "",
+          bitData.periodic ? "periodisch" : "",
+        ].filter(Boolean).join(" | ");
+        const isCandidate = candidates.some((item) =>
+          item.can_id === candidate.can_id && item.extended === candidate.extended
+          && item.byte === byte && (item.type === "byte"
+            ? (Number(item.mask) & (1 << bit)) !== 0
+            : item.bit === bit)
+        );
+        if (isCandidate) cell.classList.add("candidate");
+      }
+      row.appendChild(cell);
+    }
+    table.appendChild(row);
+  }
+  container.appendChild(table);
+}
+
+async function loadAnalysisTimeline(candidate) {
+  const session = analysisSessionValue();
+  const labelA = $("analysis-label-a").value.trim();
+  const labelB = $("analysis-label-b").value.trim();
+  if (!session || !candidate || !labelA || !labelB) return;
+  const bit = candidate.type === "byte" ? 0 : candidate.bit;
+  $("analysis-timeline-title").textContent = `${candidate.id_hex} · Byte ${candidate.byte} · Bit ${bit}${candidate.type === "byte" ? " (Feld, erstes Bit)" : ""}`;
+  try {
+    const data = await api(
+      `/api/analysis/timeline?session=${encodeURIComponent(session)}`
+      + `&label_a=${encodeURIComponent(labelA)}&label_b=${encodeURIComponent(labelB)}`
+      + `&can_id=${candidate.can_id}&extended=${candidate.extended ? 1 : 0}`
+      + `&byte=${candidate.byte}&bit=${bit}`
+      + `&before_s=${Number($("analysis-before").value || 2)}`
+      + `&after_s=${Number($("analysis-after").value || 5)}`
+    );
+    drawAnalysisTimeline(data, candidate);
+  } catch (error) {
+    clearAnalysisCanvas("Zeitdiagramm nicht verfuegbar: " + error.message);
+  }
+}
+
+function clearAnalysisCanvas(message = "") {
+  const canvas = $("analysis-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (message) {
+    ctx.fillStyle = "#8fa1b7";
+    ctx.font = "14px sans-serif";
+    ctx.fillText(message, 16, 30);
+  }
+}
+
+function drawAnalysisTimeline(data, candidate) {
+  const canvas = $("analysis-canvas");
+  const ctx = canvas.getContext("2d");
+  const points = (data && data.points) || [];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!points.length) {
+    clearAnalysisCanvas("Keine Punkte fuer dieses Bit in den A/B-Fenstern.");
+    return;
+  }
+  const padLeft = 44;
+  const padRight = 20;
+  const padTop = 18;
+  const padBottom = 26;
+  const width = canvas.width - padLeft - padRight;
+  const height = canvas.height - padTop - padBottom;
+  const times = points.map((point) => Date.parse(point.timestamp)).filter((value) => !Number.isNaN(value));
+  const minT = Math.min(...times);
+  const maxT = Math.max(...times);
+  const span = Math.max(1, maxT - minT);
+  ctx.strokeStyle = "#2a394b";
+  ctx.lineWidth = 1;
+  for (const value of [0, 1]) {
+    const y = padTop + height - value * height;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(padLeft + width, y);
+    ctx.stroke();
+    ctx.fillStyle = "#8fa1b7";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(String(value), 18, y + 4);
+  }
+  ctx.fillStyle = "#8fa1b7";
+  ctx.fillText("0", padLeft, canvas.height - 8);
+  ctx.fillText("Zeit", padLeft + width - 30, canvas.height - 8);
+  let lastX = null;
+  let lastY = null;
+  for (const point of points) {
+    const t = Date.parse(point.timestamp);
+    if (Number.isNaN(t)) continue;
+    const x = padLeft + ((t - minT) / span) * width;
+    const y = padTop + height - Number(point.value) * height;
+    ctx.fillStyle = point.state === "A" ? "#4cc2ff" : "#f0b429";
+    ctx.beginPath();
+    ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    if (lastX !== null && point.state === points[points.indexOf(point) - 1]?.state) {
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    lastX = x;
+    lastY = y;
+  }
+  ctx.fillStyle = "#4cc2ff";
+  ctx.fillText("A", padLeft + 8, 14);
+  ctx.fillStyle = "#f0b429";
+  ctx.fillText("B", padLeft + 28, 14);
+}
+
+function exportAnalysis(format) {
+  const data = state.analysis.result;
+  if (!data) { toast("Erst analysieren.", true); return; }
+  const rows = data.candidates || [];
+  let content;
+  let type;
+  let extension;
+  if (format === "json") {
+    content = JSON.stringify(data, null, 2);
+    type = "application/json";
+    extension = "json";
+  } else {
+    const header = ["typ", "can_id", "byte", "bit", "maske", "a", "b", "wechsel", "korrelation", "sicherheit", "bedeutung", "flags"];
+    const lines = [header.join(",")];
+    for (const item of rows) {
+      const flags = [
+        item.counter_suspect ? "zaehler" : "",
+        item.checksum_suspect ? "pruefsumme" : "",
+        item.periodic ? "periodisch" : "",
+        item.one_shot ? "einmalig" : "",
+        item.wakeup ? "wakeup" : "",
+      ].filter(Boolean).join("+");
+      lines.push([
+        item.type, item.id_hex, item.byte, item.bit ?? "", item.mask,
+        item.a_value, item.b_value, item.changes, item.correlation,
+        item.confidence, item.meaning || "", flags,
+      ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","));
+    }
+    content = lines.join("\n");
+    type = "text/csv";
+    extension = "csv";
+  }
+  const blob = new Blob([content], { type });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `volvo-analyse.${extension}`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 /* ---------- Editor / Bestaetigung ---------- */
@@ -1136,6 +1616,26 @@ function init() {
   $("bitwatch-start").addEventListener("click", startBitwatch);
   $("bitwatch-stop").addEventListener("click", stopBitwatch);
   $("bitwatch-reset").addEventListener("click", resetBitwatch);
+  $("signal-archive-toggle").addEventListener("click", () => {
+    state.showArchivedSignals = !state.showArchivedSignals;
+    $("signal-archive-toggle").textContent = state.showArchivedSignals ? "Archiv ausblenden" : "Archiv anzeigen";
+    renderSignals();
+    renderSignalSelectors();
+    renderLive();
+  });
+  $("analysis-refresh-sessions").addEventListener("click", loadAnalysisSessions);
+  $("analysis-session").addEventListener("change", loadAnalysisEvents);
+  $("analysis-refresh-events").addEventListener("click", loadAnalysisEvents);
+  $("analysis-run").addEventListener("click", runAnalysis);
+  $("analysis-marker-set").addEventListener("click", () => markAnalysisEvent($("analysis-marker-preset").value));
+  $("analysis-marker-custom-set").addEventListener("click", () => {
+    const value = $("analysis-marker-custom").value.trim();
+    if (!value) { toast("Ereignis-Text fehlt", true); return; }
+    markAnalysisEvent(value);
+    $("analysis-marker-custom").value = "";
+  });
+  $("analysis-export-csv").addEventListener("click", () => exportAnalysis("csv"));
+  $("analysis-export-json").addEventListener("click", () => exportAnalysis("json"));
 
   $("measurement-start").addEventListener("click", startMeasurement);
   $("measurement-stop").addEventListener("click", stopMeasurement);

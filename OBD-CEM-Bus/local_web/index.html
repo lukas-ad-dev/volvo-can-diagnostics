@@ -65,6 +65,7 @@
     <button class="tab" data-tab="monitor">Live-CAN-Monitor</button>
     <button class="tab" data-tab="assistant">Assistent</button>
     <button class="tab" data-tab="bits">Bit-Test</button>
+    <button class="tab" data-tab="analysis">Signalanalyse</button>
     <button class="tab" data-tab="live">Live-Test &amp; Zeitlinie</button>
     <button class="tab" data-tab="editor">Signal-Editor</button>
     <button class="tab" data-tab="references">Referenzen</button>
@@ -78,6 +79,10 @@
         <span><i class="led gray"></i> AUS / inaktiv</span>
         <span><i class="led yellow"></i> UNBEKANNT / Kandidat</span>
         <span><i class="led red"></i> ungueltig / veraltet / verloren</span>
+      </div>
+      <div class="toolbar">
+        <button id="signal-archive-toggle" class="button secondary" type="button">Archiv anzeigen</button>
+        <span class="muted small">Standardansicht: nur die aktuell funktionierenden Lichtsignale</span>
       </div>
       <div id="signal-grid" class="signal-grid"></div>
       <p class="muted note">
@@ -180,6 +185,100 @@
           wiederholen. Bits mit sehr hoher Änderungszahl sind meist Zähler;
           Bits mit wenigen, gerichteten Wechseln sind interessanter.
         </p>
+      </div>
+    </section>
+
+    <section id="tab-analysis" class="tab-panel">
+      <div class="panel">
+        <h2>Signalanalyse</h2>
+        <p class="muted">
+          Offline- und Live-Analyse der aufgezeichneten CAN-Daten. Zustände über
+          Marker (z. B. Licht AUS / Licht AN) vergleichen; die Engine sucht
+          korrelierte Bits und Bytes und kennzeichnet Zähler, Prüfsummen und
+          Bus-Wake-up-IDs. Keine CAN-Sendefunktion.
+        </p>
+        <div class="toolbar">
+          <select id="analysis-session" aria-label="Aufzeichnung"></select>
+          <button id="analysis-refresh-sessions" class="button secondary" type="button">Sessions laden</button>
+          <span id="analysis-session-info" class="muted"></span>
+        </div>
+        <div class="toolbar">
+          <input id="analysis-label-a" list="analysis-labels" placeholder="Zustand A, z. B. Licht AUS" autocomplete="off">
+          <input id="analysis-label-b" list="analysis-labels" placeholder="Zustand B, z. B. Licht AN" autocomplete="off">
+          <datalist id="analysis-labels"></datalist>
+          <label>vor <input id="analysis-before" type="number" value="2" min="0" step="1"> s</label>
+          <label>nach <input id="analysis-after" type="number" value="5" min="1" step="1"> s</label>
+          <button id="analysis-run" class="button" type="button">Analysieren</button>
+          <button id="analysis-refresh-events" class="button secondary" type="button">Events laden</button>
+        </div>
+        <div class="toolbar">
+          <input id="analysis-filter-id" type="text" placeholder="ID filtern" autocomplete="off">
+          <input id="analysis-filter-byte" type="text" placeholder="Byte" autocomplete="off">
+          <input id="analysis-filter-bit" type="text" placeholder="Bit" autocomplete="off">
+          <label>min. Korrelation <input id="analysis-min-corr" type="number" value="80" min="0" max="100" step="1"> %</label>
+          <label class="check"><input id="analysis-hide-counters" type="checkbox" checked> Störsignale ausblenden</label>
+          <label class="check"><input id="analysis-hide-wakeup" type="checkbox"> Wake-up-IDs ausblenden</label>
+          <label class="check"><input id="analysis-stable-only" type="checkbox"> nur stabile Bits</label>
+        </div>
+        <div class="toolbar">
+          <button id="analysis-export-csv" class="button secondary" type="button">CSV exportieren</button>
+          <button id="analysis-export-json" class="button secondary" type="button">JSON exportieren</button>
+          <span id="analysis-status" class="muted"></span>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div class="panel">
+          <h3>Marker und Lichtanalyse</h3>
+          <p class="muted small">
+            Marker werden nur lokal in der Aufzeichnung gespeichert. Zustand
+            markieren, Funktion schalten, wiederholen; danach A/B-Labels wählen.
+          </p>
+          <div class="toolbar">
+            <select id="analysis-marker-preset">
+              <option value="Licht: Zuendung an, Tag, AUTO">Zuendung an, Tag, AUTO</option>
+              <option value="Licht: Zuendung an, Tag, MANUELL EIN">Zuendung an, Tag, MANUELL EIN</option>
+              <option value="Licht: Zuendung an, Dunkel, AUTO">Zuendung an, Dunkel, AUTO</option>
+              <option value="Licht: Zuendung an, Dunkel, MANUELL EIN">Zuendung an, Dunkel, MANUELL EIN</option>
+              <option value="Licht: Fahrzeug aus, Wegbeleuchtung AUS">Fahrzeug aus, Wegbeleuchtung AUS</option>
+              <option value="Licht: Fahrzeug aus, Wegbeleuchtung EIN">Fahrzeug aus, Wegbeleuchtung EIN</option>
+              <option value="Licht AUS">Licht AUS</option>
+              <option value="Licht AN">Licht AN</option>
+              <option value="Licht AUTO">Licht AUTO</option>
+              <option value="Wegbeleuchtung EIN">Wegbeleuchtung EIN</option>
+              <option value="Wegbeleuchtung AUS">Wegbeleuchtung AUS</option>
+              <option value="Verriegelt">Verriegelt</option>
+              <option value="Entriegelt">Entriegelt</option>
+              <option value="Zuendung EIN">Zuendung EIN</option>
+              <option value="Zuendung AUS">Zuendung AUS</option>
+            </select>
+            <button id="analysis-marker-set" class="button" type="button">Marker setzen</button>
+            <input id="analysis-marker-custom" type="text" placeholder="eigenes Ereignis" autocomplete="off">
+            <button id="analysis-marker-custom-set" class="button secondary" type="button">Eigenen Marker setzen</button>
+          </div>
+          <div id="analysis-events" class="timeline"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Kandidaten</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Typ</th><th>CAN-ID</th><th>Byte</th><th>Bit</th><th>A</th><th>B</th><th>Wechsel</th><th>Korr.</th><th>Sicherheit</th><th>Bedeutung</th></tr></thead>
+              <tbody id="analysis-results"></tbody>
+            </table>
+          </div>
+          <p id="analysis-wakeup" class="muted small"></p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Bitmatrix <span id="analysis-matrix-title" class="muted"></span></h3>
+        <div id="analysis-matrix" class="bitmatrix"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Zeitdiagramm <span id="analysis-timeline-title" class="muted"></span></h3>
+        <canvas id="analysis-canvas" width="1100" height="180"></canvas>
       </div>
     </section>
 

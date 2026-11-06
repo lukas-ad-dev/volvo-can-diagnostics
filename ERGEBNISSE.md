@@ -1,65 +1,91 @@
-# Ergebnisse und Messdaten-Übersicht
+# Ergebnisse und Messdatenübersicht
 
 ## CEM-CAN
 
-### Loganalyse 2026-11-05
+### Live-Aufzeichnungen 2026-11-06
 
-- Quelle: 500-kbit/s-Aufzeichnung.
-- **159.617 Frames**
-- **24 Standard-11-Bit-IDs**
-- DLC: 8 Byte (152.894), 4 Byte (3.667), 3 Byte (3.056)
-- Keine Demo-/Testdaten, keine Parse-Fehler
-- Maximal **8.728–8.856 Frames pro 10 s** (Zeitbasis/Fenstergrenze)
-- Top-IDs: `0x025`, `0x027`, `0x02A`, `0x030`, `0x033`, `0x035`,
-  `0x03A`, `0x040`, `0x050`, `0x085`, `0x130`, `0x57F`
+- **500 kbit/s**, ausschließlich `LISTEN_ONLY`
+- **24 Standard-11-Bit-IDs**, keine Extended-IDs auf diesem Abgriff
+- Mehrere Live-Läufe mit insgesamt mehreren Millionen Frames
+- Im normalen Empfang **0 Busfehler**
+- Gegen Ende der Abendtests Busfehler während Bus-Schlaf-/Wake-Zyklen
+  (192 bis 1.304 im laufenden Zähler); keine CAN-Sendung
+- Aufzeichnungen mit getrennten Messdateien und Ereignismarkern
 
-Die 8.735 Frames/10 s sind damit plausibel; die exakte Zahl hängt von der
-Fenstergrenze ab.
+### Reproduzierte CEM-Zustände
 
-### Live-Lauf 2026-11-06
+`0x030` und `0x035` sind Zwillingsnachrichten: Bytes 1–7 identisch,
+Byte 0 mit konstantem XOR `0x65`. Byte 0 ist ein Zähler/Integritätsfeld.
 
-- **289.647 Frames**, **24 IDs**
-- **0 CAN-/Bus-/TX-/RX-Fehler**
-- 33 USB-Queue-Drops (keine CAN-Fehler)
-- TWAI **RUNNING**, danach **STOP**
-- 500 kbit/s, LISTEN_ONLY
+| Funktion | CAN-ID | Feld | AUS/anderer Zustand | EIN | Status |
+|---|---|---|---|---|---|
+| Licht AUS/Standlicht | `0x030`/`0x035` | Byte 2–3 | – | `7C61` | beobachtet |
+| Wegbeleuchtung/Coming Home | `0x030`/`0x035` | Byte 2–3 | – | `7C60` | Kandidat |
+| Abblendlicht | `0x030`/`0x035` | Byte 2–3 | – | `86 03` | praktisch bestätigt |
+| Fernlicht manuell | `0x030`/`0x035` | Byte 2–3 | – | `92 2B` | praktisch bestätigt |
+| Fernlicht Automatik/Nacht | `0x030`/`0x035` | Byte 2–3 | – | `92 6B` | praktisch bestätigt |
+| Fernlicht weitere Basis | `0x030`/`0x035` | Byte 2–3 | – | `92 4B` | beobachtet |
+| Fernlicht generisch | `0x030`/`0x035` | Byte 2–3 | – | Maske `0x9008` | Kandidat |
+| Lichthupe | `0x030`/`0x035` | Byte 2–3 | – | `7C69` | bei Abblendlicht AUS bestätigt |
 
-### CEM-Signale
+Weitere, nicht mehr aktive Lichtvarianten: `85A3`, `86 43`, `85C3`, `91EB` und
+`92 0B`. Sie sind im GUI-Archiv, aber nicht als aktuelle Zustände bestätigt.
 
-Noch **keine bestätigten CEM-Decoder**. Der Assistent arbeitet mit einem
-Aktionszyklus; zusätzlich sammelt der Bit-Test bis zu 60 ändernde Bits und
-zeigt sie live als EIN/AUS. Der letzte Abblendlicht-Test im alten
-Zwei-Zyklus-Modus ergab 0 Kandidaten; für den nächsten Test eine sicher
-schaltbare Aktion verwenden.
+### Blinker
 
-## OBD-Low-Bus
-
-Diese Ergebnisse sind **Referenz/Kandidaten**, keine CEM-Bestätigung:
-
-| Signal | CAN-ID | Byte/Bit | Status |
+| Funktion | CAN-ID | Feld | Wert |
 |---|---|---|---|
-| Fahrstufe P/R/N/D | `0x1FFF00A0` | Byte 6, Bits 0–1 | Kandidat |
-| Fußbremse | `0x1FFF0200` | Byte 4, Bit 1 | Kandidat |
-| Rückfahrkamera | `0x1FFF0144` | Byte 2, Bit 3, aktiv bei 0 | Kandidat |
-| Abblendlicht/Fernlicht | – | – | auf OBD-Bus nicht stabil sichtbar |
-| Standlicht/Parkbremse | – | – | auf OBD-Bus nicht stabil sichtbar |
-| Türen/Fenster/Spiegel/Sitz | – | – | keine neuen IDs/Bits beobachtet |
+| Blinker links Befehl | `0x040` | Byte 5, Bit 4 | 0/1 |
+| Blinker rechts Befehl | `0x040` | Byte 5, Bit 5 | 0/1 |
+| Warnblinker Befehl | `0x040` | Byte 5, Bits 4+5 | beide 1 |
+| Blinkstatus normal | `0x050` | Byte 4–7 | `01 90 01 90` |
+| Warnblinkerstatus | `0x050` | Byte 4–7 | `01 F4 01 2C` |
+
+`0x040` Byte 5 enthält zusätzlich stark flatternde Zählerbits (Bit 2 und 6);
+diese sind nicht der Blinker.
+
+### Wegbeleuchtung / Busruhe
+
+- Während der Wegbeleuchtung bleibt `0x030/0x035` auf `7C60`.
+- Beim Bus-Schlaf/Wake erscheinen `0x531` (`31 40 00 …`) und `0x532`
+  (`32 40 00 …`); wahrscheinlich Network-Management-/Wake-Frames.
+- Ein expliziter Ein-/Ausschaltbefehl für die Wegbeleuchtung war in den
+  bisherigen Aufzeichnungen nicht sichtbar.
+- Der Bus fiel mehrfach für etwa 17–71 Sekunden in Ruhe und wachte danach
+  wieder auf; ein sauberer 90-Sekunden-Zyklus mit Befehl steht noch aus.
+
+### Nicht auf diesem Abgriff gefunden
+
+- Bremspedal
+- Fahrstufe N/R
+- separate Wegbeleuchtungs-Trigger-Nachricht
+
+Die Referenzen `0x1FFF00A0` (Fahrstufe), `0x1FFF0200` (Fußbremse) und
+`0x1FFF0144` (Rückfahrkamera) gehören zum OBD-Low-Bus und wurden auf dem
+CEM-11-Bit-Bus nicht gesehen.
+
+## Werkzeuge und Tests
+
+- Lokaler Diagnoseserver mit Live-Monitor, Assistent, Bit-Test und Signalanalyse
+- A/B-Analyse mit Mehrbyte-Feldern, Bitmatrix, Zeitdiagramm und Export
+- Messungsverwaltung mit eigenen Namen und getrennten CSV-Dateien
+- Umfangreiche Python-Tests und statische GUI-/Sicherheitsprüfungen
+- Keine CAN-Sendefunktion im Projekt
 
 ## Hardware und Sicherheit
 
-- Waveshare ESP32-S3-RS485-CAN, TJA1051 + π163E31
+- Waveshare ESP32-S3-RS485-CAN, TJA1051 + Digitalisolator
 - CAN TX GPIO15, RX GPIO16
 - Echter TXD GPIO15 bleibt `INPUT_PULLUP`; TWAI-TX auf Dummy-GPIO48
 - Nur LISTEN_ONLY; kein `twai_transmit`
 - Errata-Workaround aktiv
-- Kein Auto-Start, kein Auto-Neuversuch
+- Kein Auto-Start, kein Auto-Neuversuch, kein Bitratenscan
 - 120-Ω-Jumper, Verkabelung und Isolator/TXD sind noch messtechnisch zu prüfen
 
 ## Reproduzierbarkeit
 
-Die vollständigen Rohdaten liegen lokal im Messordner. Hier dokumentiert sind
-Zählwerte, IDs, DLC-Verteilung und allgemeine Ergebnisse. Für eigene
-Messungen:
+Die vollständigen Rohdaten liegen lokal im Messordner. Öffentlich dokumentiert
+sind Zählwerte, IDs, Zustände und allgemeine Ergebnisse.
 
 ```bash
 cd OBD-CEM-Bus/firmware
@@ -68,5 +94,6 @@ pio test -e native
 
 cd ../..
 python -m unittest discover -s OBD-CEM-Bus/tests -p "test_*.py"
-python OBD-CEM-Bus/tools/check_safety.py
+python OBD-CEM-Bus/tools/check_local_safety.py
+python OBD-CEM-Bus/tools/check_local_web.py
 ```
