@@ -36,8 +36,7 @@
 - `firmware/.pio/build/esp32s3/firmware.elf` / `firmware.map` (Debug)
 - SHA-256 `firmware.bin`: `7EBEF8878E324D96EBA1ECF7B958E5E6C2946C05F095F03C915D89B6749C6116`
 
-**Hinweis:** Die `firmware.bin` enthält die kompilierten Zugangsdaten aus
-`include/secrets.h` (WLAN-AP). Sie ist **nicht** für die Weitergabe bestimmt.
+Die Firmware-Binärdatei wird nicht im Repository versioniert.
 
 ## Flashen (nur USB, CAN getrennt)
 
@@ -94,17 +93,6 @@ Kernpunkte:
 **Nicht ausgeführt:** Bitratenscan, CAN-Serverstart. Der letzte Fahrzeugtest war
 ein autorisierter read-only 500-kbit/s-Lauf; die Hardware-Passivität ist
 weiterhin nicht messtechnisch nachgewiesen.
-
-## DoIP-Diagnose-Übergabe
-
-Die Windows-DoIP-/UDS-Messwerte und die KfzDiagnose-App liegen im Ordner
-`UEBERGABE_WINDOWS_DIAGNOSE_2026-11-05/` (siehe dortige `README_UEBERGABE.md`).
-
-**DoIP ist nicht CAN:** ECU-Adressen sind Logical Addresses, keine CAN-IDs.
-
-## Backups
-
-Siehe `../backups/README.md` (Volvo-Root).
 
 ## Offene Punkte
 
