@@ -58,14 +58,7 @@ Ambientebeleuchtung:
 3. Im Browser Frames, TWAI-Status und Assistent beobachten. **CAN STOP** im
    Browser beendet den Empfang sofort.
 4. Nur ein Profil gleichzeitig auf Port 8765. Bei Problemen den letzten Stand
-   in `docs/STAND_2026-11-06.md` und `SAVE_20261106-0042/README_SAVE.md` lesen.
-
-## GitHub
-
-Das lokale Git-Repository ist vorbereitet. Eine einfache Schritt-für-Schritt-
-Anleitung für GitHub ohne Vorkenntnisse steht in `docs/GITHUB_START.md`.
-Empfohlen: **privates** Repository; Secrets, Rohdaten, `.venv`, `.pio` und
-`SAVE_*` werden nicht hochgeladen.
+   in `docs/STAND_2026-11-06.md` lesen.
 
 ## Struktur
 
@@ -94,35 +87,24 @@ python3 tools/check_web.py
 python3 tools/check_local_web.py
 ```
 
-`firmware/include/secrets.h` ist lokal und wird nicht in Archive aufgenommen.
-Die CEM-Firmware nutzt standardmaessig den AP-Namen `Volvo-CEM-CAN`.
+`firmware/include/secrets.h` enthält die lokalen WLAN-Zugangsdaten. Als Vorlage
+dient `firmware/include/secrets.example.h`.
 
 ## Dokumentation
 
 - `docs/HARDWARE_CEM.md`
 - `docs/SIGNALZIELE.md`
-- `docs/MESSUNGEN_CEM.md`
-- `docs/INSTALLATION.md`
 - `docs/HARDWARE.md`
 - `docs/SIGNALERKENNUNG.md`
 - `docs/CAN_ANALYSE.md`
 - `docs/ARCHITEKTUR.md`
-- `docs/TESTBERICHT.md`
-- `PROJEKTUEBERSICHT.md`
+- `docs/STAND_2026-11-06.md`
+- `docs/SICHERHEIT_CAN_500.md`
 
 ---
 
-## Private Windows-Diagnose
+## Bereitstellung
 
-Private DoIP-, VIN-, Screenshot- und Fahrzeugdaten sind **nicht** Teil dieses
-oeffentlichen Repos.
-
-## Bereitstellung (2026-11-05)
-
-- `CEM_BEREIT.md` – Build-/Teststatus, Firmware-Binary, Flash-Beispiel,
-  Sicherheitshinweise.
-- Firmware-Binary: `firmware/build/firmware.bin` (nicht weitergeben;
-  enthaelt kompilierte Secrets).
-- Backups: siehe `../backups/README.md`.
-- Sicherheit: `../SECURITY_HINWEIS_2026-11-05.md`.
-- DoIP-Diagnose-Uebergabe: `UEBERGABE_WINDOWS_DIAGNOSE_2026-11-05/`.
+- `CEM_BEREIT.md` – Build-/Teststatus, Flash-Beispiel und Sicherheitshinweise.
+- Firmware-Binary: `firmware/build/firmware.bin` (wird nicht versioniert).
+- Sicherheit: `docs/SICHERHEIT_CAN_500.md`.

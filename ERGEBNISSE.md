@@ -4,7 +4,7 @@
 
 ### Loganalyse 2026-11-05
 
-- Quelle: 500-kbit/s-Aufzeichnung, Rohdaten nicht veröffentlicht.
+- Quelle: 500-kbit/s-Aufzeichnung.
 - **159.617 Frames**
 - **24 Standard-11-Bit-IDs**
 - DLC: 8 Byte (152.894), 4 Byte (3.667), 3 Byte (3.056)
@@ -56,7 +56,7 @@ Diese Ergebnisse sind **Referenz/Kandidaten**, keine CEM-Bestätigung:
 
 ## Reproduzierbarkeit
 
-Die vollständigen Rohdaten bleiben privat. Öffentlich dokumentiert sind
+Die vollständigen Rohdaten liegen lokal im Messordner. Hier dokumentiert sind
 Zählwerte, IDs, DLC-Verteilung und allgemeine Ergebnisse. Für eigene
 Messungen:
 

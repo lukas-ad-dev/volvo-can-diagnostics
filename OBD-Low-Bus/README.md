@@ -54,8 +54,8 @@ sichtbar (Gateway-/Body-CAN-/LIN-Effekt).
 - `config/` - Laufzeit-Signaldefinitionen
 - `decoder/` - Referenzarchiv der Decoder/Kandidaten
 - `tests/` - native C++-Tests und Python-Tests
-- `docs/` - Architektur, Testbericht, Messanleitungen
-- `messungen/` - nicht im oeffentlichen Repo (private Rohdaten)
+- `docs/` - Architektur, Messanleitungen und Signalerkennung
+- `messungen/` - lokale Messdateien
 
 ## Bauen und testen
 
@@ -72,17 +72,18 @@ python3 tools/check_web.py
 python3 tools/check_local_web.py
 ```
 
-`firmware/include/secrets.h` ist lokal und wird nicht in Archive aufgenommen.
+`firmware/include/secrets.h` enthält die lokalen WLAN-Zugangsdaten. Als Vorlage
+dient `firmware/include/secrets.example.h`.
 
 ## Dokumentation
 
-- `docs/INSTALLATION.md`
 - `docs/HARDWARE.md`
-- `docs/ECHTE_CAN_MESSUNG.md`
+- `docs/MESSUNGEN_20261104.md`
 - `docs/SIGNALERKENNUNG.md`
 - `docs/CAN_ANALYSE.md`
+- `docs/CAN_REFERENZEN.md`
 - `docs/ARCHITEKTUR.md`
-- `docs/TESTBERICHT.md`
+- `docs/ROADMAP.md`
 - `docs/MESSUNGEN_20261104.md`
 - `docs/WINDOWS_IMPORT_2026-11-05.md`
 - `docs/WINDOWS_VS_SERVER_DIFF.md`

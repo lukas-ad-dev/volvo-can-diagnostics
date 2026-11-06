@@ -6,7 +6,6 @@
 - **Variante:** T8
 - **Plattform:** SPA
 - **Modelljahr:** 2021
-- **VIN/Fahrgestellnummer:** nicht veröffentlicht (bleibt privat)
 
 ## Ziel
 
@@ -76,8 +75,7 @@ Steuergeräte codieren oder Fahrzeugfunktionen steuern. Das Projekt ist
 - Letzter Test „standlicht“ ergab 0 Kandidaten, weil in beiden EIN-Zyklen
   kein Bit stabil wechselte. Das war kein UI-Fehler, sondern die Aktion
   erzeugte im CEM-Datenstrom keinen reproduzierbaren Zustandswechsel.
-- Öffentliches, bereinigtes Repository erstellt: Code, Doku, Hardware- und
-  CAN-Bus-Infos; **keine VIN, keine Rohdaten, keine Secrets**.
+- Repository mit Code, Doku, Hardware- und CAN-Bus-Infos erstellt.
 
 ## Bisherige Ergebnisse
 
@@ -103,13 +101,3 @@ Diese Angaben fehlen noch und können vom Fahrzeughalter ergänzt werden:
 4. Oszilloskopmessung: GPIO15/TXD, U9-Ausgang und CAN-H/L bei Boot/START/STOP.
 5. Ob 500 kbit/s exakt dem CEM-Bus entsprechen (zweite Gegenmessung).
 6. Welche Signale Priorität haben (Rückwärtsgang, Licht, Ambient, Kamera).
-7. Soll eine Lizenz (z. B. MIT) ergänzt werden?
-8. GitHub-Profilname: `lukas-ad` als sichtbarer Autor; keine volle Namensnennung.
-
-## Öffentlich / privat
-
-**Öffentlich:** Code, Doku, Hardware-/CAN-Bus-Infos, Modell, Modelljahr,
-T8-Variante, allgemeine Signal-Kandidaten.
-
-**Privat:** VIN, Rohdaten/CSV/JSONL, WLAN-Passwörter, Secrets, private Pfade,
-Server-Zugänge und Screenshots mit Fahrzeugdaten.

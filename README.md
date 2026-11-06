@@ -1,67 +1,69 @@
 # Volvo CAN Diagnostics – CEM & OBD Low Bus
 
-Passive CAN-Diagnose für einen **Volvo V90 T8 (SPA, Modelljahr 2021)** mit dem
-Waveshare **ESP32-S3-RS485-CAN**. Das Repository enthält zwei getrennte
-Projekte:
+Passive CAN-Analyse für einen **Volvo V90 T8 (SPA-Plattform, Modelljahr 2021)**
+mit dem Waveshare **ESP32-S3-RS485-CAN**. Das Projekt dokumentiert zwei
+CAN-Busse und die Werkzeuge, mit denen die Nachrichten gelesen und
+ausgewertet werden.
 
-| Ordner | Bus | Inhalt |
-|---|---|---|
-| `OBD-CEM-Bus/` | interner CEM-CAN | Firmware, Web-GUI, Assistent, Doku |
-| `OBD-Low-Bus/` | OBD-Diagnosebus (Pin 6/14) | ältere passive Analyse, Signalergebnisse, Tools |
+## Fahrzeug und Busse
 
-## Öffentliche Daten – bewusst begrenzt
+| Bereich | Beschreibung |
+|---|---|
+| Fahrzeug | Volvo V90 T8, SPA, Modelljahr 2021 |
+| OBD-Diagnosebus | OBD2 Pin 6/14, älterer Analysepfad |
+| CEM-CAN | interner CAN-Bus hinter dem Fahrerfach |
+| Bitrate CEM | 500 kbit/s (durch Live-Messung bestätigt) |
+| Betriebsart | ausschließlich LISTEN_ONLY, kein Senden |
 
-Veröffentlicht werden:
+## Ziel
 
-- Quellcode, Firmware, Web-Oberflächen, Tools und Tests
-- CAN-Bus-Zuordnung, Hardwareinformationen und allgemeine Analyse-Doku
-- Modell, Modelljahr und Motorvariante (V90 T8, MJ 2021)
-- bereits geprüfte, allgemeine CAN-Erkenntnisse
+Die Signale des Fahrzeugs sollen passiv identifiziert und dokumentiert werden:
 
-**Nicht veröffentlicht:**
+- Rückwärtsgang und Fahrgeschwindigkeit
+- Abblendlicht, Fernlicht, Standlicht
+- Parkkamera und Rangiermodus
+- Ver- und Entriegelung, Fahrertür
+- Zündung, Komfort/Radio, Fahrzeug wach/Ruhezustand
 
-- VIN / Fahrgestellnummer
-- Roh-Messdaten, CSV-/JSONL-Logs und Frame-Dumps
-- WLAN-Passwörter, Secrets, Tokens
-- private Windows-Pfade, Server-Zugänge oder Screenshots mit Fahrzeugdaten
+Das Projekt sendet keine CAN-Nachrichten, stellt keine Diagnoseanfragen und
+verändert keine Steuergeräte.
 
-Die `.gitignore` schließt Messdaten, Backups, Build-Artefakte und Secrets aus.
+## Hardware
 
-## Projektverlauf und Ergebnisse
+Für den Aufbau werden benötigt:
 
-- [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md) – Fahrzeug, Ziel, Zeitlinie,
-  Sicherheitsvorfall, offene Fragen
-- [`ERGEBNISSE.md`](ERGEBNISSE.md) – CAN-IDs, Frame-Zahlen, Signal-Kandidaten,
-  Hardware- und Sicherheitsstatus
+- Waveshare **ESP32-S3-RS485-CAN**
+- USB-C-Datenkabel zum Laptop
+- CAN-H/CAN-L-Anschluss am Fahrzeug oder OBD2-Pigtail (Pin 6/14)
+- optional: kurze, verdrillte CAN-Leitung
+- Multimeter für Durchgang, Spannung und Widerstand
 
-## Sicherheit
+Die 120-Ω-Terminierung des Boards bleibt standardmäßig deaktiviert und wird
+vor dem Fahrzeuganschluss geprüft. CAN TX liegt auf GPIO15, CAN RX auf GPIO16.
+Der echte TXD bleibt im Firmware-Betrieb hochgezogen; TWAI-TX nutzt einen
+Dummy-Pin.
 
-- Ausschließlich **LISTEN_ONLY**, kein CAN-Senden.
-- Keine Diagnoseanfragen, keine Gateway-Manipulation, keine Codierung.
-- 500 kbit/s sind für den CEM-Test konfiguriert; kein Bitratenscan.
-- Der echte CAN-TXD GPIO15 bleibt `INPUT_PULLUP`; TWAI-TX liegt auf
-  Dummy-GPIO48.
-- Hardware-Passivität und Verdrahtung müssen vor einem Fahrzeuganschluss
-  geprüft werden. Bei Auffälligkeiten sofort STOP oder USB trennen.
+## Projekte
 
-## CEM-Firmware und Web-GUI
+| Ordner | Inhalt |
+|---|---|
+| `OBD-CEM-Bus/` | Firmware, Web-GUI, Zwei-Zyklus-Assistent, CEM-Dokumentation |
+| `OBD-Low-Bus/` | passive OBD-Analyse, Signalkandidaten, Logger und Tools |
 
-Die CEM-Firmware unterstützt:
+## Bisherige Ergebnisse
 
-- feste 500 kbit/s, Listen-Only
-- expliziten START/STOP, keinen Auto-Start
-- Dummy-TX-Schutz
-- Zwei-Zyklus-Assistent mit Live-EIN/AUS-Anzeige der Kandidatenbits
-- Bind-Auswahl pro Kandidat
+- **CEM-CAN:** 500 kbit/s, 24 Standard-IDs, Live-Lauf mit 289.647 Frames,
+  0 CAN-Fehler, TWAI RUNNING.
+- **CEM-Decoder:** noch keine bestätigten Signale; der Assistent zeigt
+  Kandidatenbits live als EIN/AUS.
+- **OBD-Low-Bus:** Fahrstufe P/R/N/D (`0x1FFF00A0`, Byte 6, Bits 0–1),
+  Fußbremse (`0x1FFF0200`, Byte 4, Bit 1) und Rückfahrkamera
+  (`0x1FFF0144`, Byte 2, Bit 3) als Kandidaten.
+- **Assistent:** zwei Aktionszyklen (AUS → EIN → AUS → EIN), Live-Anzeige
+  der Kandidatenbits und Binden an eine Zielkachel.
 
-Details: `OBD-CEM-Bus/docs/STAND_2026-11-06.md`,
-`OBD-CEM-Bus/docs/SICHERHEIT_CAN_500.md`.
-
-## OBD-Low-Bus
-
-Das ältere Projekt enthält die passive Analyse des OBD-Diagnosebusses,
-Signal-Kandidaten (z. B. Fahrstufe, Fußbremse, Rückfahrkamera) und die
-zugehörigen Tools. Die Rohdaten bleiben privat.
+Details stehen in [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md) und
+[`ERGEBNISSE.md`](ERGEBNISSE.md).
 
 ## Bauen und testen
 
@@ -76,14 +78,21 @@ python OBD-CEM-Bus/tools/check_safety.py
 python OBD-CEM-Bus/tools/check_hardware_pins.py
 ```
 
-Für das OBD-Low-Bus-Projekt liegen die Befehle in
-`OBD-Low-Bus/README.md`.
+Die Befehle für das OBD-Low-Bus-Projekt stehen in `OBD-Low-Bus/README.md`.
 
 ## Start unter Windows
 
-Für das CEM-Projekt gibt es im Unterordner die Startskripte. Der lokale
-Server läuft auf `http://127.0.0.1:8765/`; die Firmware wird über USB-CDC
-angesprochen.
+Die CEM-Firmware wird über USB-CDC angesprochen. Der lokale Diagnoseserver
+läuft auf `http://127.0.0.1:8765/`. Startskripte und weitere Hinweise liegen
+im jeweiligen Projektordner.
+
+## Dokumentation
+
+- [`PROJEKTVERLAUF.md`](PROJEKTVERLAUF.md) – Fahrzeug, Ziel, Zeitlinie und
+  bisherige Entwicklung
+- [`ERGEBNISSE.md`](ERGEBNISSE.md) – Messwerte, CAN-IDs und Signalkandidaten
+- `OBD-CEM-Bus/docs/` – Hardware, Sicherheit, Architektur und CEM-Test
+- `OBD-Low-Bus/docs/` – OBD-Messungen und Signalerkennung
 
 ## Lizenz
 
@@ -91,6 +100,6 @@ angesprochen.
 
 ## Hinweis
 
-Dieses Projekt steht in keiner Verbindung zu Volvo Cars. Alle Angaben zu
-CAN-IDs und Signalen sind Analyseergebnisse und keine offiziellen
+Dieses Projekt steht in keiner Verbindung zu Volvo Cars. CAN-IDs und
+Signalangaben sind eigene Analyseergebnisse und keine offiziellen
 Herstellerdaten.

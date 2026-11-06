@@ -1,8 +1,7 @@
 # Messungen 04.11.2026 - OBD-Low-Bus
 
-**Hinweis:** Die Rohdaten und CSV-Dateien sind **nicht** Teil des
-oeffentlichen Repos. Hier stehen nur die allgemeinen Ergebnisse und
-Dateinamen als Dokumentation; die Messdaten selbst bleiben privat.
+Die Messdateien liegen lokal im Projektordner. Hier stehen die wichtigsten
+Ergebnisse und Dateinamen als Dokumentation.
 
 ## Wichtige Messdateien
 
